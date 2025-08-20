@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}오늘의 질문{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- 헤더 -->
+            <div class="text-center mb-4">
+                <h2>📝 오늘의 질문</h2>
+                <p class="text-muted">서로를 더 깊이 알아가는 시간</p>
+            </div>
+
+            {% if question %}
+            <!-- 질문 카드 -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-primary me-2">
+                            {{ categories[question.category]['emoji'] }} {{ categories[question.category]['name'] }}
+                        </span>
+                        <span class="badge" style="background-color: {{ difficulties[question.difficulty]['color'] }}">
+                            {{ difficulties[question.difficulty]['name'] }}
+                        </span>
+                    </div>
+                    <small class="text-muted">{{ daily_question.date.strftime('%Y년 %m월 %d일') }}</small>
+                </div>
+                <div class="card-body">
+                    <h4 class="card-title mb-4">{{ question.text }}</h4>
+                    
+                    <!-- 내 답변 섹션 -->
+                    <div class="mb-4">
+                        <h5 class="mb-3">
+                            <i class="fas fa-user me-2"></i>내 답변
+                        </h5>
+                        
+                        {% if my_answer %}
+                        <div class="alert alert-success">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <p class="mb-2">{{ my_answer.answer_text }}</p>
+                                    <small class="text-muted">
+                                        작성일: {{ my_answer.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}
+                                        {% if my_answer.updated_at %}
+                                        (수정됨: {{ my_answer.updated_at.strftime('%Y년 %m월 %d일 %H:%M') }})
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="editAnswer()">
+                                    <i class="fas fa-edit"></i> 수정
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="answer-form">
+                            <textarea class="form-control" id="answer-text" rows="4" 
+                                      placeholder="당신의 답변을 작성해주세요..."></textarea>
+                            <div class="mt-3 d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 답변을 작성하면 파트너의 답변을 볼 수 있어요
+                                </small>
+                                <button type="button" class="btn btn-primary" onclick="submitAnswer()">
+                                    <i class="fas fa-paper-plane"></i> 답변 제출
+                                </button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- 파트너 답변 섹션 -->
+                    <div class="mb-4">
+                        <h5 class="mb-3">
+                            <i class="fas fa-heart me-2"></i>{{ partner.name if partner else '파트너' }}의 답변
+                        </h5>
+                        
+                        {% if can_view_partner %}
+                            {% if partner_answer %}
+                            <div class="alert alert-info">
+                                <p class="mb-2">{{ partner_answer.answer_text }}</p>
+                                <small class="text-muted">
+                                    작성일: {{ partner_answer.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}
+                                    {% if partner_answer.updated_at %}
+                                    (수정됨: {{ partner_answer.updated_at.strftime('%Y년 %m월 %d일 %H:%M') }})
+                                    {% endif %}
+                                </small>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-clock me-2"></i>
+                                {{ partner.name if partner else '파트너' }}가 아직 답변하지 않았어요.
+                            </div>
+                            {% endif %}
+                        {% else %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-lock me-2"></i>
+                            먼저 답변을 작성하면 파트너의 답변을 볼 수 있어요.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 네비게이션 버튼 -->
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('questions.history') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-history"></i> 답변 히스토리
+                </a>
+                <a href="{{ url_for('questions.browse') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-search"></i> 질문 둘러보기
+                </a>
+            </div>
+
+            {% else %}
+            <!-- 질문이 없는 경우 -->
+            <div class="text-center py-5">
+                <i class="fas fa-question-circle fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">오늘의 질문을 불러올 수 없어요</h4>
+                <p class="text-muted">잠시 후 다시 시도해주세요.</p>
+                <a href="{{ url_for('questions.index') }}" class="btn btn-primary">
+                    질문 메인으로
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 답변 수정 모달 -->
+{% if my_answer %}
+<div class="modal fade" id="editAnswerModal" tabindex="-1" aria-labelledby="editAnswerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAnswerModalLabel">답변 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <textarea class="form-control" id="edit-answer-text" rows="4">{{ my_answer.answer_text }}</textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="updateAnswer()">수정 완료</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// 전역 변수
+const questionId = {{ question.id if question else 'null' }};
+const questionDate = '{{ daily_question.date.isoformat() if daily_question else '' }}';
+
+// 답변 제출
+function submitAnswer() {
+    const answerText = document.getElementById('answer-text').value.trim();
+    
+    if (!answerText) {
+        alert('답변을 입력해주세요.');
+        return;
+    }
+    
+    if (!questionId) {
+        alert('질문 정보를 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 버튼 비활성화
+    const submitBtn = document.querySelector('button[onclick="submitAnswer()"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 제출 중...';
+    
+    fetch('{{ url_for("questions.answer") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            question_id: questionId,
+            answer: answerText,
+            date: questionDate
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload(); // 페이지 새로고침
+        } else {
+            alert('오류: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('답변 제출 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        // 버튼 복원
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+// 답변 수정 모달 열기
+function editAnswer() {
+    const modal = new bootstrap.Modal(document.getElementById('editAnswerModal'));
+    modal.show();
+}
+
+// 답변 수정
+function updateAnswer() {
+    const answerText = document.getElementById('edit-answer-text').value.trim();
+    
+    if (!answerText) {
+        alert('답변을 입력해주세요.');
+        return;
+    }
+    
+    if (!questionId) {
+        alert('질문 정보를 찾을 수 없습니다.');
+        return;
+    }
+    
+    fetch('{{ url_for("questions.answer") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            question_id: questionId,
+            answer: answerText,
+            date: questionDate
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload(); // 페이지 새로고침
+        } else {
+            alert('오류: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('답변 수정 중 오류가 발생했습니다.');
+    });
+}
+
+// 엔터 키로 답변 제출 (Ctrl+Enter)
+document.addEventListener('DOMContentLoaded', function() {
+    const answerTextarea = document.getElementById('answer-text');
+    if (answerTextarea) {
+        answerTextarea.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                submitAnswer();
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.answer-form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.card-header .badge {
+    font-size: 0.8em;
+}
+
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-success {
+    border-left-color: #28a745;
+}
+
+.alert-info {
+    border-left-color: #17a2b8;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.alert-secondary {
+    border-left-color: #6c757d;
+}
+</style>
+{% endblock %}

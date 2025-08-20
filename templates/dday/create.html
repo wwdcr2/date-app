@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}D-Day 등록 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h1>📅 새 D-Day 등록</h1>
+        <p>특별한 날을 등록하여 함께 기다려보세요</p>
+    </div>
+
+    <div class="form-card">
+        <form method="POST" class="dday-form">
+            <div class="form-group">
+                <label for="title">제목 *</label>
+                <input type="text" 
+                       id="title" 
+                       name="title" 
+                       placeholder="예: 우리 1주년, 생일, 여행 등"
+                       required
+                       maxlength="100">
+                <div class="form-help">D-Day의 이름을 입력해주세요 (최대 100자)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="target_date">날짜 *</label>
+                <input type="date" 
+                       id="target_date" 
+                       name="target_date" 
+                       required>
+                <div class="form-help">D-Day로 설정할 날짜를 선택해주세요</div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">설명</label>
+                <textarea id="description" 
+                          name="description" 
+                          rows="4" 
+                          placeholder="이 날에 대한 특별한 의미나 계획을 적어보세요"
+                          maxlength="500"></textarea>
+                <div class="form-help">선택사항 (최대 500자)</div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('dday.index') }}" class="btn btn-secondary">취소</a>
+                <button type="submit" class="btn btn-primary">등록하기</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 미리보기 카드 -->
+    <div class="preview-section">
+        <h3>미리보기</h3>
+        <div class="dday-preview-card">
+            <div class="dday-card-header">
+                <h3 class="dday-card-title" id="preview-title">D-Day 제목</h3>
+            </div>
+            <div class="dday-card-content">
+                <div class="dday-date" id="preview-date">날짜를 선택해주세요</div>
+                <div class="dday-status">
+                    <span class="dday-number" id="preview-status">D-Day</span>
+                </div>
+                <div class="dday-description" id="preview-description" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 폼 컨테이너 */
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-2xl);
+    align-items: start;
+}
+
+.form-header {
+    grid-column: 1 / -1;
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.form-header h1 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.form-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+.form-card {
+    background: var(--white);
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.dday-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* 미리보기 섹션 */
+.preview-section {
+    position: sticky;
+    top: calc(64px + var(--spacing-lg));
+}
+
+.preview-section h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+}
+
+.dday-preview-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    border-left: 4px solid var(--accent-coral);
+}
+
+.dday-preview-card .dday-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--medium-gray);
+    background: var(--light-gray);
+}
+
+.dday-preview-card .dday-card-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin: 0;
+}
+
+.dday-preview-card .dday-card-content {
+    padding: var(--spacing-lg);
+}
+
+.dday-preview-card .dday-date {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.dday-preview-card .dday-status {
+    text-align: center;
+    margin: var(--spacing-lg) 0;
+}
+
+.dday-preview-card .dday-number {
+    display: inline-block;
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--accent-coral);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.dday-preview-card .dday-description {
+    color: var(--dark-gray);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--light-gray);
+    border-radius: var(--radius-md);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .form-container {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xl);
+        padding: 0 var(--spacing-md);
+    }
+    
+    .form-card {
+        padding: var(--spacing-xl);
+    }
+    
+    .preview-section {
+        position: static;
+        order: -1;
+    }
+    
+    .form-header h1 {
+        font-size: var(--text-xl);
+    }
+    
+    .form-header p {
+        font-size: var(--text-base);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const titleInput = document.getElementById('title');
+    const dateInput = document.getElementById('target_date');
+    const descriptionInput = document.getElementById('description');
+    
+    const previewTitle = document.getElementById('preview-title');
+    const previewDate = document.getElementById('preview-date');
+    const previewStatus = document.getElementById('preview-status');
+    const previewDescription = document.getElementById('preview-description');
+    
+    // 오늘 날짜를 최소값으로 설정
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    
+    // 제목 입력 시 미리보기 업데이트
+    titleInput.addEventListener('input', function() {
+        const title = this.value.trim();
+        previewTitle.textContent = title || 'D-Day 제목';
+    });
+    
+    // 날짜 입력 시 미리보기 업데이트
+    dateInput.addEventListener('change', function() {
+        const selectedDate = this.value;
+        if (selectedDate) {
+            const date = new Date(selectedDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            date.setHours(0, 0, 0, 0);
+            
+            // 날짜 포맷팅
+            const formattedDate = date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            previewDate.textContent = formattedDate;
+            
+            // D-Day 계산
+            const diffTime = date - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let statusText;
+            if (diffDays > 0) {
+                statusText = `D-${diffDays}`;
+            } else if (diffDays === 0) {
+                statusText = 'D-Day';
+            } else {
+                statusText = `D+${Math.abs(diffDays)}`;
+            }
+            
+            previewStatus.textContent = statusText;
+        } else {
+            previewDate.textContent = '날짜를 선택해주세요';
+            previewStatus.textContent = 'D-Day';
+        }
+    });
+    
+    // 설명 입력 시 미리보기 업데이트
+    descriptionInput.addEventListener('input', function() {
+        const description = this.value.trim();
+        if (description) {
+            previewDescription.textContent = description;
+            previewDescription.style.display = 'block';
+        } else {
+            previewDescription.style.display = 'none';
+        }
+    });
+    
+    // 폼 검증
+    document.querySelector('.dday-form').addEventListener('submit', function(e) {
+        const title = titleInput.value.trim();
+        const targetDate = dateInput.value;
+        
+        if (!title) {
+            e.preventDefault();
+            showToast('제목을 입력해주세요.', 'error');
+            titleInput.focus();
+            return;
+        }
+        
+        if (!targetDate) {
+            e.preventDefault();
+            showToast('날짜를 선택해주세요.', 'error');
+            dateInput.focus();
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

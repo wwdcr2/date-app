@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}질문 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="questions-container">
+    <div class="questions-header">
+        <h1>❓ 질문</h1>
+        <p>서로를 더 깊이 알아가는 특별한 시간을 만들어보세요</p>
+    </div>
+
+    <div class="questions-content">
+        <!-- 오늘의 질문 카드 -->
+        <div class="featured-card">
+            <div class="card-header">
+                <h2>🌟 오늘의 질문</h2>
+                <p>매일 새로운 질문으로 대화를 시작해보세요</p>
+            </div>
+            <div class="card-content">
+                <div class="daily-question-preview" id="daily-question-preview">
+                    <div class="loading">로딩 중...</div>
+                </div>
+                <div class="card-actions">
+                    <a href="{{ url_for('questions.daily') }}" class="btn btn-primary btn-lg">오늘의 질문 답하기</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 기능 메뉴 -->
+        <div class="questions-menu">
+            <div class="menu-item">
+                <div class="menu-icon">📚</div>
+                <div class="menu-content">
+                    <h3>질문 둘러보기</h3>
+                    <p>다양한 카테고리의 질문들을 살펴보세요</p>
+                    <a href="{{ url_for('questions.browse') }}" class="btn btn-secondary">둘러보기</a>
+                </div>
+            </div>
+
+            <div class="menu-item">
+                <div class="menu-icon">📖</div>
+                <div class="menu-content">
+                    <h3>답변 히스토리</h3>
+                    <p>지금까지 나눈 대화들을 다시 읽어보세요</p>
+                    <a href="{{ url_for('questions.history') }}" class="btn btn-secondary">히스토리 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 카테고리 소개 -->
+        <div class="categories-section">
+            <h2>질문 카테고리</h2>
+            <div class="categories-grid">
+                {% for category_id, category_info in categories.items() %}
+                <div class="category-card">
+                    <div class="category-emoji">{{ category_info.emoji }}</div>
+                    <h3>{{ category_info.name }}</h3>
+                    <p>{{ category_info.description }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 통계 정보 -->
+        <div class="stats-section">
+            <h2>질문 통계</h2>
+            <div class="stats-grid" id="stats-grid">
+                <div class="loading">통계를 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 질문 페이지 스타일 */
+.questions-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.questions-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.questions-header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.questions-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+.questions-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xl);
+}
+
+/* 오늘의 질문 카드 */
+.featured-card {
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    text-align: center;
+    color: var(--charcoal);
+    box-shadow: var(--shadow-lg);
+}
+
+.featured-card .card-header h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--spacing-sm);
+}
+
+.featured-card .card-header p {
+    font-size: var(--text-lg);
+    margin-bottom: var(--spacing-xl);
+    opacity: 0.8;
+}
+
+.daily-question-preview {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.question-text {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--charcoal);
+}
+
+.question-meta {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-md);
+    font-size: var(--text-sm);
+    opacity: 0.7;
+}
+
+.question-category,
+.question-difficulty {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* 기능 메뉴 */
+.questions-menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-xl);
+}
+
+.menu-item {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.menu-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.menu-icon {
+    font-size: 3rem;
+    flex-shrink: 0;
+}
+
+.menu-content h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.menu-content p {
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-lg);
+    line-height: 1.6;
+}
+
+/* 카테고리 섹션 */
+.categories-section {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow-md);
+}
+
+.categories-section h2 {
+    text-align: center;
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.category-card {
+    background: var(--light-gray);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.category-card:hover {
+    transform: translateY(-2px);
+}
+
+.category-emoji {
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.category-card h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.category-card p {
+    color: var(--dark-gray);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+/* 통계 섹션 */
+.stats-section {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow-md);
+}
+
+.stats-section h2 {
+    text-align: center;
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.stat-item {
+    background: var(--light-gray);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+}
+
+.stat-number {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--accent-coral);
+    margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .questions-container {
+        padding: 0 var(--spacing-md);
+    }
+    
+    .questions-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .questions-header p {
+        font-size: var(--text-base);
+    }
+    
+    .featured-card {
+        padding: var(--spacing-xl);
+    }
+    
+    .featured-card .card-header h2 {
+        font-size: var(--text-xl);
+    }
+    
+    .featured-card .card-header p {
+        font-size: var(--text-base);
+    }
+    
+    .menu-item {
+        flex-direction: column;
+        text-align: center;
+        padding: var(--spacing-xl);
+    }
+    
+    .menu-icon {
+        font-size: 2.5rem;
+    }
+    
+    .categories-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDailyQuestionPreview();
+    loadStats();
+});
+
+async function loadDailyQuestionPreview() {
+    try {
+        const response = await fetch('/questions/api/daily-question');
+        const data = await response.json();
+        
+        const preview = document.getElementById('daily-question-preview');
+        
+        if (data.success) {
+            const question = data.question;
+            const categoryInfo = question.category_info;
+            const difficultyInfo = question.difficulty_info;
+            
+            preview.innerHTML = `
+                <div class="question-text">${question.text}</div>
+                <div class="question-meta">
+                    <div class="question-category">
+                        <span>${categoryInfo.emoji || '📝'}</span>
+                        <span>${categoryInfo.name || question.category}</span>
+                    </div>
+                    <div class="question-difficulty">
+                        <span>⭐</span>
+                        <span>${difficultyInfo.name || question.difficulty}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            preview.innerHTML = '<div class="question-text">오늘의 질문을 불러올 수 없습니다.</div>';
+        }
+        
+    } catch (error) {
+        console.error('오늘의 질문 미리보기 로드 실패:', error);
+        document.getElementById('daily-question-preview').innerHTML = 
+            '<div class="question-text">질문을 불러오는 중 오류가 발생했습니다.</div>';
+    }
+}
+
+async function loadStats() {
+    // 임시 통계 데이터 (실제로는 API에서 가져와야 함)
+    const statsGrid = document.getElementById('stats-grid');
+    
+    const stats = [
+        { number: '{{ categories|length }}', label: '카테고리' },
+        { number: '40+', label: '총 질문 수' },
+        { number: '3', label: '난이도 단계' },
+        { number: '매일', label: '새로운 질문' }
+    ];
+    
+    statsGrid.innerHTML = stats.map(stat => `
+        <div class="stat-item">
+            <div class="stat-number">${stat.number}</div>
+            <div class="stat-label">${stat.label}</div>
+        </div>
+    `).join('');
+}
+</script>
+{% endblock %}

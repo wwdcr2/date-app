@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}D-Day - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="dday-container">
+    <div class="dday-header">
+        <h1>📅 D-Day</h1>
+        <p>소중한 기념일과 특별한 날들을 함께 기록해보세요</p>
+        <div class="dday-actions">
+            <a href="{{ url_for('dday.create') }}" class="btn btn-primary">새 D-Day 등록</a>
+        </div>
+    </div>
+
+    <div class="dday-content">
+        {% if ddays %}
+            <div class="dday-grid">
+                {% for dday in ddays %}
+                <div class="dday-card {% if dday.is_past() %}past{% endif %}">
+                    <div class="dday-card-header">
+                        <h3 class="dday-card-title">{{ dday.title }}</h3>
+                        <div class="dday-card-actions">
+                            <a href="{{ url_for('dday.edit', dday_id=dday.id) }}" class="btn-icon" title="수정">
+                                ✏️
+                            </a>
+                            <button class="btn-icon btn-delete" onclick="deleteDDay({{ dday.id }})" title="삭제">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="dday-card-content">
+                        <div class="dday-date">
+                            {{ dday.target_date.strftime('%Y년 %m월 %d일') }}
+                        </div>
+                        
+                        <div class="dday-status">
+                            <span class="dday-number {% if dday.is_past() %}past{% endif %}">
+                                {{ dday.get_status_text() }}
+                            </span>
+                        </div>
+                        
+                        {% if dday.description %}
+                        <div class="dday-description">
+                            {{ dday.description }}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="dday-meta">
+                            <small>{{ dday.created_at.strftime('%Y.%m.%d') }} 등록</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📅</div>
+                <h3>등록된 D-Day가 없습니다</h3>
+                <p>첫 번째 D-Day를 등록하여 특별한 날들을 기록해보세요.</p>
+                <a href="{{ url_for('dday.create') }}" class="btn btn-primary">D-Day 등록하기</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>D-Day 삭제</h3>
+            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>정말로 이 D-Day를 삭제하시겠습니까?</p>
+            <p><small>삭제된 D-Day는 복구할 수 없습니다.</small></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">취소</button>
+            <button class="btn btn-danger" onclick="confirmDelete()">삭제</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* D-Day 페이지 스타일 */
+.dday-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.dday-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.dday-header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.dday-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-xl);
+}
+
+.dday-actions {
+    display: flex;
+    justify-content: center;
+}
+
+/* D-Day 그리드 */
+.dday-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--spacing-xl);
+}
+
+.dday-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-left: 4px solid var(--accent-coral);
+}
+
+.dday-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.dday-card.past {
+    border-left-color: var(--medium-gray);
+    opacity: 0.8;
+}
+
+.dday-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--medium-gray);
+    background: var(--light-gray);
+}
+
+.dday-card-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin: 0;
+    flex: 1;
+}
+
+.dday-card-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: var(--text-lg);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    transition: background-color 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-icon:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.btn-delete:hover {
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.dday-card-content {
+    padding: var(--spacing-lg);
+}
+
+.dday-date {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.dday-status {
+    text-align: center;
+    margin: var(--spacing-lg) 0;
+}
+
+.dday-number {
+    display: inline-block;
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--accent-coral);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.dday-number.past {
+    color: var(--dark-gray);
+    background: var(--medium-gray);
+}
+
+.dday-description {
+    color: var(--dark-gray);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--light-gray);
+    border-radius: var(--radius-md);
+}
+
+.dday-meta {
+    text-align: right;
+    color: var(--dark-gray);
+}
+
+/* 빈 상태 */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    font-size: var(--text-xl);
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state p {
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* 모달 푸터 */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--medium-gray);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .dday-container {
+        padding: 0 var(--spacing-md);
+    }
+    
+    .dday-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .dday-header p {
+        font-size: var(--text-base);
+    }
+    
+    .dday-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .dday-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+    
+    .dday-card-actions {
+        align-self: flex-end;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let ddayToDelete = null;
+
+function deleteDDay(ddayId) {
+    ddayToDelete = ddayId;
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    ddayToDelete = null;
+    document.getElementById('deleteModal').style.display = 'none';
+}
+
+async function confirmDelete() {
+    if (!ddayToDelete) return;
+    
+    try {
+        const response = await fetch(`/dday/${ddayToDelete}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            // 페이지 새로고침
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showToast(data.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('D-Day 삭제 실패:', error);
+        showToast('D-Day 삭제 중 오류가 발생했습니다.', 'error');
+    }
+    
+    closeDeleteModal();
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+</script>
+{% endblock %}

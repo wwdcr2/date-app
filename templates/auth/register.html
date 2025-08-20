@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}회원가입 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>회원가입</h1>
+            <p>새 계정을 만들어 파트너와 함께 시작하세요</p>
+        </div>
+        
+        <form class="auth-form" id="register-form" method="POST" data-validate>
+            <div class="form-group">
+                <label for="name">이름</label>
+                <input type="text" id="name" name="name" 
+                       data-validate="required|min:2|max:50"
+                       placeholder="이름을 입력하세요"
+                       autocomplete="name">
+                <div class="form-help">2-50자 사이로 입력해주세요.</div>
+                <div class="form-error" id="name-error"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">이메일</label>
+                <input type="email" id="email" name="email" 
+                       data-validate="required|email"
+                       placeholder="이메일을 입력하세요"
+                       autocomplete="email">
+                <div class="form-success" id="email-success"></div>
+                <div class="form-error" id="email-error"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" name="password" 
+                       data-validate="required|min:6"
+                       placeholder="비밀번호를 입력하세요 (최소 6자리)"
+                       autocomplete="new-password">
+                <div class="form-help">비밀번호는 최소 6자리 이상이어야 합니다.</div>
+                <div class="form-error" id="password-error"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password_confirm">비밀번호 확인</label>
+                <input type="password" id="password_confirm" name="password_confirm" 
+                       data-validate="required|match:password"
+                       placeholder="비밀번호를 다시 입력하세요"
+                       autocomplete="new-password">
+                <div class="form-error" id="password_confirm-error"></div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-full" id="register-btn">
+                회원가입
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>이미 계정이 있으신가요? <a href="{{ url_for('auth.login') }}">로그인</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('register-form');
+    const submitBtn = document.getElementById('register-btn');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const passwordConfirmInput = document.getElementById('password_confirm');
+    
+    let emailCheckTimeout;
+    
+    // 이메일 중복 확인
+    emailInput.addEventListener('input', function() {
+        clearTimeout(emailCheckTimeout);
+        const email = this.value.trim();
+        
+        if (email && isValidEmail(email)) {
+            emailCheckTimeout = setTimeout(() => {
+                checkEmailAvailability(email);
+            }, 500);
+        } else {
+            clearEmailStatus();
+        }
+    });
+    
+    // 비밀번호 확인 검증
+    passwordConfirmInput.addEventListener('input', function() {
+        const password = passwordInput.value;
+        const passwordConfirm = this.value;
+        const errorEl = document.getElementById('password_confirm-error');
+        
+        if (passwordConfirm && password !== passwordConfirm) {
+            errorEl.textContent = '비밀번호가 일치하지 않습니다.';
+        } else {
+            errorEl.textContent = '';
+        }
+    });
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // 클라이언트 사이드 검증
+        if (!validateForm()) {
+            return;
+        }
+        
+        // 버튼 비활성화
+        submitBtn.disabled = true;
+        submitBtn.textContent = '처리 중...';
+        
+        // 에러 메시지 초기화
+        clearErrors();
+        
+        const formData = new FormData(form);
+        const data = {
+            name: formData.get('name'),
+            email: formData.get('email'),
+            password: formData.get('password')
+        };
+        
+        try {
+            const response = await fetch('{{ url_for("auth.register") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                // 즉시 리다이렉트
+                window.location.href = result.redirect_url;
+            } else {
+                showErrors(result.errors);
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            showMessage('회원가입 중 오류가 발생했습니다.', 'error');
+        } finally {
+            // 버튼 상태 복원
+            submitBtn.disabled = false;
+            submitBtn.textContent = '회원가입';
+        }
+    });
+    
+    async function checkEmailAvailability(email) {
+        try {
+            const response = await fetch(`{{ url_for("auth.check_email") }}?email=${encodeURIComponent(email)}`);
+            const result = await response.json();
+            
+            const errorEl = document.getElementById('email-error');
+            const successEl = document.getElementById('email-success');
+            
+            if (result.available) {
+                errorEl.textContent = '';
+                successEl.textContent = result.message;
+            } else {
+                successEl.textContent = '';
+                errorEl.textContent = result.message;
+            }
+        } catch (error) {
+            clearEmailStatus();
+        }
+    }
+    
+    function clearEmailStatus() {
+        document.getElementById('email-error').textContent = '';
+        document.getElementById('email-success').textContent = '';
+    }
+    
+    function validateForm() {
+        let isValid = true;
+        
+        // 비밀번호 확인
+        const password = passwordInput.value;
+        const passwordConfirm = passwordConfirmInput.value;
+        
+        if (password !== passwordConfirm) {
+            document.getElementById('password_confirm-error').textContent = '비밀번호가 일치하지 않습니다.';
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    function isValidEmail(email) {
+        const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return pattern.test(email);
+    }
+    
+    function clearErrors() {
+        document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+    }
+    
+    function showErrors(errors) {
+        errors.forEach(error => {
+            showMessage(error, 'error');
+        });
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.querySelector('.flash-messages') || createFlashContainer();
+        const flashDiv = document.createElement('div');
+        flashDiv.className = `flash-message flash-${type}`;
+        flashDiv.innerHTML = `
+            <span class="flash-text">${message}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+        `;
+        flashContainer.appendChild(flashDiv);
+        
+        // 3초 후 자동 제거
+        setTimeout(() => {
+            if (flashDiv.parentElement) {
+                flashDiv.remove();
+            }
+        }, 3000);
+    }
+    
+    function createFlashContainer() {
+        const container = document.createElement('div');
+        container.className = 'flash-messages';
+        document.querySelector('.main-content').insertBefore(container, document.querySelector('.main-content').firstChild);
+        return container;
+    }
+});
+</script>
+{% endblock %}

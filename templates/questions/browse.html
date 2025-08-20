@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+
+{% block title %}질문 둘러보기 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="browse-container">
+    <div class="browse-header">
+        <h1>📚 질문 둘러보기</h1>
+        <p>다양한 카테고리의 질문들을 살펴보고 대화의 영감을 얻어보세요</p>
+    </div>
+
+    <!-- 필터 섹션 -->
+    <div class="filter-section">
+        <form method="GET" class="filter-form">
+            <div class="filter-group">
+                <label for="category">카테고리</label>
+                <select name="category" id="category">
+                    <option value="">전체 카테고리</option>
+                    {% for category_id, category_info in categories.items() %}
+                    <option value="{{ category_id }}" {{ 'selected' if selected_category == category_id else '' }}>
+                        {{ category_info.emoji }} {{ category_info.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="difficulty">난이도</label>
+                <select name="difficulty" id="difficulty">
+                    <option value="">전체 난이도</option>
+                    {% for difficulty_id, difficulty_info in difficulties.items() %}
+                    <option value="{{ difficulty_id }}" {{ 'selected' if selected_difficulty == difficulty_id else '' }}>
+                        ⭐ {{ difficulty_info.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">필터 적용</button>
+                <a href="{{ url_for('questions.browse') }}" class="btn btn-secondary">초기화</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 질문 목록 -->
+    <div class="questions-content">
+        {% if questions.items %}
+            <div class="questions-grid">
+                {% for question in questions.items %}
+                <div class="question-card">
+                    <div class="question-header">
+                        <div class="question-meta">
+                            <span class="category">
+                                {{ categories[question.category].emoji if question.category in categories else '📝' }}
+                                {{ categories[question.category].name if question.category in categories else question.category }}
+                            </span>
+                            <span class="difficulty">
+                                ⭐ {{ difficulties[question.difficulty].name if question.difficulty in difficulties else question.difficulty }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="question-content">
+                        <div class="question-text">{{ question.text }}</div>
+                    </div>
+                    
+                    <div class="question-actions">
+                        <button class="btn btn-sm btn-outline" onclick="copyQuestion('{{ question.text|e }}')">
+                            📋 복사하기
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="shareQuestion({{ question.id }}, '{{ question.text|e }}')">
+                            💬 대화하기
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- 페이지네이션 -->
+            {% if questions.pages > 1 %}
+            <div class="pagination-section">
+                <div class="pagination">
+                    {% if questions.has_prev %}
+                    <a href="{{ url_for('questions.browse', page=questions.prev_num, category=selected_category, difficulty=selected_difficulty) }}" 
+                       class="pagination-link">이전</a>
+                    {% endif %}
+                    
+                    {% for page_num in questions.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != questions.page %}
+                            <a href="{{ url_for('questions.browse', page=page_num, category=selected_category, difficulty=selected_difficulty) }}" 
+                               class="pagination-link">{{ page_num }}</a>
+                            {% else %}
+                            <span class="pagination-current">{{ page_num }}</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="pagination-ellipsis">…</span>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if questions.has_next %}
+                    <a href="{{ url_for('questions.browse', page=questions.next_num, category=selected_category, difficulty=selected_difficulty) }}" 
+                       class="pagination-link">다음</a>
+                    {% endif %}
+                </div>
+                
+                <div class="pagination-info">
+                    {{ questions.total }}개 중 {{ (questions.page - 1) * questions.per_page + 1 }}-{{ questions.page * questions.per_page if questions.page * questions.per_page < questions.total else questions.total }}개 표시
+                </div>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <h3>조건에 맞는 질문이 없습니다</h3>
+                <p>다른 필터 조건을 시도해보세요</p>
+                <a href="{{ url_for('questions.browse') }}" class="btn btn-primary">전체 질문 보기</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 네비게이션 -->
+    <div class="navigation-section">
+        <a href="{{ url_for('questions.index') }}" class="btn btn-secondary">질문 홈으로</a>
+        <a href="{{ url_for('questions.daily') }}" class="btn btn-primary">오늘의 질문</a>
+    </div>
+</div>
+
+<!-- 질문 공유 모달 -->
+<div id="share-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>💬 질문으로 대화하기</h3>
+            <button class="modal-close" onclick="closeShareModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="selected-question">
+                <div class="question-text" id="modal-question-text"></div>
+            </div>
+            <div class="share-options">
+                <p>이 질문을 어떻게 활용하고 싶으신가요?</p>
+                <div class="share-buttons">
+                    <button class="btn btn-primary" onclick="startConversation()">
+                        🗣️ 지금 대화하기
+                    </button>
+                    <button class="btn btn-secondary" onclick="saveForLater()">
+                        💾 나중에 사용하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 둘러보기 페이지 스타일 */
+.browse-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.browse-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.browse-header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.browse-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+/* 필터 섹션 */
+.filter-section {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
+    box-shadow: var(--shadow-md);
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.filter-group label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--charcoal);
+}
+
+.filter-group select {
+    padding: var(--spacing-md);
+    border: 2px solid var(--medium-gray);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    transition: border-color 0.3s ease;
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--primary-pink);
+}
+
+.filter-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+/* 질문 그리드 */
+.questions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.question-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.question-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.question-header {
+    margin-bottom: var(--spacing-lg);
+}
+
+.question-meta {
+    display: flex;
+    gap: var(--spacing-lg);
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+}
+
+.category,
+.difficulty {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--light-gray);
+    border-radius: var(--radius-full);
+}
+
+.question-content {
+    flex: 1;
+    margin-bottom: var(--spacing-lg);
+}
+
+.question-text {
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--charcoal);
+    font-weight: 500;
+}
+
+.question-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
+}
+
+.btn-sm {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--text-sm);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--dark-gray);
+    border: 2px solid var(--medium-gray);
+}
+
+.btn-outline:hover {
+    background: var(--medium-gray);
+    color: var(--charcoal);
+}
+
+/* 페이지네이션 */
+.pagination-section {
+    margin-top: var(--spacing-2xl);
+    text-align: center;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.pagination-link,
+.pagination-current,
+.pagination-ellipsis {
+    display: inline-block;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    font-size: var(--text-sm);
+}
+
+.pagination-link {
+    background: var(--white);
+    color: var(--charcoal);
+    border: 2px solid var(--medium-gray);
+    transition: all 0.3s ease;
+}
+
+.pagination-link:hover {
+    background: var(--primary-pink);
+    color: white;
+    border-color: var(--primary-pink);
+}
+
+.pagination-current {
+    background: var(--primary-pink);
+    color: white;
+    border: 2px solid var(--primary-pink);
+}
+
+.pagination-ellipsis {
+    color: var(--dark-gray);
+}
+
+.pagination-info {
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+}
+
+/* 빈 상태 */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-3xl);
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.empty-state h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state p {
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* 네비게이션 */
+.navigation-section {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-2xl);
+}
+
+/* 모달 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background-color: var(--white);
+    margin: 10% auto;
+    padding: 0;
+    border-radius: var(--radius-xl);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow-xl);
+    animation: slideIn 0.3s ease;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xl);
+    border-bottom: 2px solid var(--light-gray);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: var(--text-xl);
+    color: var(--charcoal);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: var(--text-2xl);
+    color: var(--dark-gray);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--charcoal);
+}
+
+.modal-body {
+    padding: var(--spacing-xl);
+}
+
+.selected-question {
+    background: var(--light-gray);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.selected-question .question-text {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--charcoal);
+}
+
+.share-options p {
+    margin-bottom: var(--spacing-lg);
+    color: var(--dark-gray);
+}
+
+.share-buttons {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.share-buttons .btn {
+    flex: 1;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .browse-container {
+        padding: 0 var(--spacing-md);
+    }
+    
+    .browse-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .filter-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-actions {
+        justify-content: stretch;
+    }
+    
+    .filter-actions .btn {
+        flex: 1;
+    }
+    
+    .questions-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .question-meta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .question-actions {
+        justify-content: stretch;
+    }
+    
+    .question-actions .btn {
+        flex: 1;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+    }
+    
+    .navigation-section {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+    
+    .modal-content {
+        margin: 5% auto;
+        width: 95%;
+    }
+    
+    .share-buttons {
+        flex-direction: column;
+    }
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentQuestionId = null;
+
+function copyQuestion(questionText) {
+    navigator.clipboard.writeText(questionText).then(function() {
+        showMessage('질문이 클립보드에 복사되었습니다!', 'success');
+    }).catch(function(err) {
+        console.error('복사 실패:', err);
+        showMessage('복사에 실패했습니다.', 'error');
+    });
+}
+
+function shareQuestion(questionId, questionText) {
+    currentQuestionId = questionId;
+    document.getElementById('modal-question-text').textContent = questionText;
+    document.getElementById('share-modal').style.display = 'block';
+}
+
+function closeShareModal() {
+    document.getElementById('share-modal').style.display = 'none';
+    currentQuestionId = null;
+}
+
+function startConversation() {
+    // 오늘의 질문 페이지로 이동하거나 대화 시작 로직
+    showMessage('대화를 시작해보세요!', 'success');
+    closeShareModal();
+    // 실제로는 질문을 사용한 대화 페이지로 이동하거나 기능 구현
+}
+
+function saveForLater() {
+    // 나중에 사용하기 기능 (즐겨찾기 등)
+    showMessage('질문이 저장되었습니다!', 'success');
+    closeShareModal();
+    // 실제로는 사용자의 즐겨찾기나 저장된 질문 목록에 추가
+}
+
+function showMessage(message, type) {
+    // 기존 메시지 제거
+    const existingMessage = document.querySelector('.message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // 새 메시지 생성
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 1001;
+        animation: slideInRight 0.3s ease;
+        background-color: ${type === 'success' ? '#28a745' : '#dc3545'};
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+// 모달 외부 클릭 시 닫기
+window.onclick = function(event) {
+    const modal = document.getElementById('share-modal');
+    if (event.target === modal) {
+        closeShareModal();
+    }
+}
+
+// CSS 애니메이션 추가
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

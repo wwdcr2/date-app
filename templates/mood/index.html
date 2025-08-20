@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}무드 트래커 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="mood-container">
+    <div class="mood-header">
+        <h1>🌈 무드 트래커</h1>
+        <p>{{ current_user.name }}님과 {{ partner.name if partner else '파트너' }}님의 기분을 기록하고 공유해보세요.</p>
+    </div>
+    
+    <div class="mood-actions">
+        <a href="{{ url_for('mood.record') }}" class="btn btn-primary">
+            {% if today_mood %}
+                기분 수정하기
+            {% else %}
+                오늘 기분 기록하기
+            {% endif %}
+        </a>
+        <a href="{{ url_for('mood.calendar_view') }}" class="btn btn-secondary">캘린더 보기</a>
+        <a href="{{ url_for('mood.statistics') }}" class="btn btn-secondary">통계 보기</a>
+    </div>
+    
+    <!-- 오늘의 기분 -->
+    <div class="mood-today">
+        <h2>오늘의 기분 ({{ "today"|strftime('%Y년 %m월 %d일') }})</h2>
+        <div class="mood-today-grid">
+            <div class="mood-today-item">
+                <div class="mood-label">{{ current_user.name }}</div>
+                {% if today_mood %}
+                    <div class="mood-display">
+                        <div class="mood-emoji large">{{ today_mood.get_mood_emoji() }}</div>
+                        <div class="mood-text">{{ today_mood.get_mood_text() }}</div>
+                        {% if today_mood.note %}
+                            <div class="mood-note">{{ today_mood.note }}</div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="mood-empty">
+                        <p>아직 기분을 기록하지 않았습니다.</p>
+                        <a href="{{ url_for('mood.record') }}" class="btn btn-sm btn-primary">기록하기</a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% if partner %}
+            <div class="mood-today-item">
+                <div class="mood-label">{{ partner.name }}</div>
+                {% set partner_today_mood = partner_moods|selectattr('date', 'equalto', today)|first %}
+                {% if partner_today_mood %}
+                    <div class="mood-display">
+                        <div class="mood-emoji large">{{ partner_today_mood.get_mood_emoji() }}</div>
+                        <div class="mood-text">{{ partner_today_mood.get_mood_text() }}</div>
+                        {% if partner_today_mood.note %}
+                            <div class="mood-note">{{ partner_today_mood.note }}</div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="mood-empty">
+                        <p>아직 기분을 기록하지 않았습니다.</p>
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 이번 달 기분 요약 -->
+    <div class="mood-monthly">
+        <h2>{{ month_name }} 기분 요약</h2>
+        <div class="mood-summary-grid">
+            <!-- 내 기분 요약 -->
+            <div class="mood-summary-item">
+                <h3>{{ current_user.name }}님의 기분</h3>
+                <div class="mood-week-grid">
+                    {% for mood in my_moods[-7:] %}
+                    <div class="mood-day-item">
+                        <div class="mood-date">{{ mood.date.strftime('%m/%d') }}</div>
+                        <div class="mood-emoji">{{ mood.get_mood_emoji() }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mood-stats">
+                    <span class="stat-item">총 {{ my_moods|length }}일 기록</span>
+                    {% if my_moods %}
+                    <span class="stat-item">평균 {{ "%.1f"|format((my_moods|sum(attribute='mood_level')) / (my_moods|length)) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 파트너 기분 요약 -->
+            {% if partner %}
+            <div class="mood-summary-item">
+                <h3>{{ partner.name }}님의 기분</h3>
+                <div class="mood-week-grid">
+                    {% for mood in partner_moods[-7:] %}
+                    <div class="mood-day-item">
+                        <div class="mood-date">{{ mood.date.strftime('%m/%d') }}</div>
+                        <div class="mood-emoji">{{ mood.get_mood_emoji() }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mood-stats">
+                    <span class="stat-item">총 {{ partner_moods|length }}일 기록</span>
+                    {% if partner_moods %}
+                    <span class="stat-item">평균 {{ "%.1f"|format((partner_moods|sum(attribute='mood_level')) / (partner_moods|length)) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.mood-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.mood-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.mood-header h1 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.mood-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.mood-today {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.mood-today h2 {
+    margin-bottom: 20px;
+    color: var(--text-color);
+}
+
+.mood-today-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.mood-today-item {
+    text-align: center;
+    padding: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.mood-label {
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+.mood-display .mood-emoji.large {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.mood-text {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.mood-note {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.mood-empty {
+    color: var(--text-muted);
+}
+
+.mood-monthly {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.mood-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.mood-summary-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.mood-summary-item h3 {
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+.mood-week-grid {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+}
+
+.mood-day-item {
+    text-align: center;
+    min-width: 50px;
+}
+
+.mood-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.mood-emoji {
+    font-size: 1.5rem;
+}
+
+.mood-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.stat-item {
+    padding: 5px 10px;
+    background: var(--background-color);
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .mood-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .mood-today-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mood-summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mood-stats {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+</style>
+{% endblock %}

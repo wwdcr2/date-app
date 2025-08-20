@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+
+{% block title %}답변 히스토리 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <div class="history-header">
+        <h1>📖 답변 히스토리</h1>
+        <p>지금까지 나눈 소중한 대화들을 다시 읽어보세요</p>
+    </div>
+
+    <!-- 필터 섹션 -->
+    <div class="filter-section">
+        <form method="GET" class="filter-form">
+            <div class="filter-group">
+                <label for="category">카테고리</label>
+                <select name="category" id="category">
+                    <option value="">전체 카테고리</option>
+                    {% for category_id, category_info in categories.items() %}
+                    <option value="{{ category_id }}" {{ 'selected' if selected_category == category_id else '' }}>
+                        {{ category_info.emoji }} {{ category_info.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="start_date">시작 날짜</label>
+                <input type="date" name="start_date" id="start_date" 
+                       value="{{ start_date.isoformat() if start_date else '' }}">
+            </div>
+            
+            <div class="filter-group">
+                <label for="end_date">종료 날짜</label>
+                <input type="date" name="end_date" id="end_date" 
+                       value="{{ end_date.isoformat() if end_date else '' }}">
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">필터 적용</button>
+                <a href="{{ url_for('questions.history') }}" class="btn btn-secondary">초기화</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 답변 목록 -->
+    <div class="history-content">
+        {% if answer_pairs %}
+            {% for pair in answer_pairs %}
+            <div class="history-item">
+                <div class="history-date">
+                    <span class="date-text">{{ pair.date.strftime('%Y년 %m월 %d일') }}</span>
+                    <span class="day-text">{{ pair.date.strftime('%A') }}</span>
+                </div>
+                
+                <div class="history-card">
+                    <!-- 질문 -->
+                    <div class="question-section">
+                        <div class="question-header">
+                            <span class="question-icon">❓</span>
+                            <div class="question-meta">
+                                <span class="category">
+                                    {{ categories[pair.question.category].emoji if pair.question.category in categories else '📝' }}
+                                    {{ categories[pair.question.category].name if pair.question.category in categories else pair.question.category }}
+                                </span>
+                                <span class="difficulty">
+                                    ⭐ {{ difficulties[pair.question.difficulty].name if pair.question.difficulty in difficulties else pair.question.difficulty }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="question-text">{{ pair.question.text }}</div>
+                    </div>
+                    
+                    <!-- 답변들 -->
+                    <div class="answers-section">
+                        <!-- 내 답변 -->
+                        <div class="answer-item my-answer">
+                            <div class="answer-header">
+                                <span class="answer-author">💭 내 답변</span>
+                                <span class="answer-time">
+                                    {{ (pair.my_answer.updated_at if pair.my_answer.updated_at and pair.my_answer.updated_at != pair.my_answer.created_at else pair.my_answer.created_at).strftime('%H:%M') }}
+                                    {% if pair.my_answer.updated_at and pair.my_answer.updated_at != pair.my_answer.created_at %}
+                                    <small>(수정됨)</small>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="answer-text">{{ pair.my_answer.answer_text }}</div>
+                        </div>
+                        
+                        <!-- 파트너 답변 -->
+                        <div class="answer-item partner-answer">
+                            <div class="answer-header">
+                                <span class="answer-author">💕 {{ partner.name if partner else '파트너' }}의 답변</span>
+                                {% if pair.partner_answer %}
+                                <span class="answer-time">
+                                    {{ (pair.partner_answer.updated_at if pair.partner_answer.updated_at and pair.partner_answer.updated_at != pair.partner_answer.created_at else pair.partner_answer.created_at).strftime('%H:%M') }}
+                                    {% if pair.partner_answer.updated_at and pair.partner_answer.updated_at != pair.partner_answer.created_at %}
+                                    <small>(수정됨)</small>
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if pair.partner_answer %}
+                            <div class="answer-text">{{ pair.partner_answer.answer_text }}</div>
+                            {% else %}
+                            <div class="no-answer">아직 답변하지 않았습니다</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 상태 표시 -->
+                    <div class="status-section">
+                        {% if pair.both_answered %}
+                        <span class="status-badge complete">✅ 모두 답변 완료</span>
+                        {% else %}
+                        <span class="status-badge incomplete">⏳ 답변 대기 중</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- 페이지네이션 -->
+            {% if pagination.pages > 1 %}
+            <div class="pagination-section">
+                <div class="pagination">
+                    {% if pagination.has_prev %}
+                    <a href="{{ url_for('questions.history', page=pagination.prev_num, category=selected_category, start_date=start_date, end_date=end_date) }}" 
+                       class="pagination-link">이전</a>
+                    {% endif %}
+                    
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != pagination.page %}
+                            <a href="{{ url_for('questions.history', page=page_num, category=selected_category, start_date=start_date, end_date=end_date) }}" 
+                               class="pagination-link">{{ page_num }}</a>
+                            {% else %}
+                            <span class="pagination-current">{{ page_num }}</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="pagination-ellipsis">…</span>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <a href="{{ url_for('questions.history', page=pagination.next_num, category=selected_category, start_date=start_date, end_date=end_date) }}" 
+                       class="pagination-link">다음</a>
+                    {% endif %}
+                </div>
+                
+                <div class="pagination-info">
+                    {{ pagination.total }}개 중 {{ (pagination.page - 1) * pagination.per_page + 1 }}-{{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }}개 표시
+                </div>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📝</div>
+                <h3>아직 답변한 질문이 없습니다</h3>
+                <p>오늘의 질문부터 시작해보세요!</p>
+                <a href="{{ url_for('questions.daily') }}" class="btn btn-primary">오늘의 질문 답하기</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 네비게이션 -->
+    <div class="navigation-section">
+        <a href="{{ url_for('questions.index') }}" class="btn btn-secondary">질문 홈으로</a>
+        <a href="{{ url_for('questions.daily') }}" class="btn btn-primary">오늘의 질문</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 히스토리 페이지 스타일 */
+.history-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.history-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.history-header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.history-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+/* 필터 섹션 */
+.filter-section {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
+    box-shadow: var(--shadow-md);
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.filter-group label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--charcoal);
+}
+
+.filter-group select,
+.filter-group input {
+    padding: var(--spacing-md);
+    border: 2px solid var(--medium-gray);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    transition: border-color 0.3s ease;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    outline: none;
+    border-color: var(--primary-pink);
+}
+
+.filter-actions {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+/* 히스토리 아이템 */
+.history-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.history-item {
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: flex-start;
+}
+
+.history-date {
+    flex-shrink: 0;
+    text-align: center;
+    min-width: 120px;
+}
+
+.date-text {
+    display: block;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+.day-text {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+    margin-top: var(--spacing-xs);
+}
+
+.history-card {
+    flex: 1;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.history-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* 질문 섹션 */
+.question-section {
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 2px solid var(--light-gray);
+}
+
+.question-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.question-icon {
+    font-size: var(--text-xl);
+}
+
+.question-meta {
+    display: flex;
+    gap: var(--spacing-lg);
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+}
+
+.category,
+.difficulty {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.question-text {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--charcoal);
+}
+
+/* 답변 섹션 */
+.answers-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.answer-item {
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+.my-answer {
+    background: linear-gradient(135deg, var(--primary-pink), rgba(248, 187, 217, 0.3));
+}
+
+.partner-answer {
+    background: linear-gradient(135deg, var(--primary-blue), rgba(184, 230, 225, 0.3));
+}
+
+.answer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.answer-author {
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+.answer-time {
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+}
+
+.answer-text {
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--charcoal);
+}
+
+.no-answer {
+    font-style: italic;
+    color: var(--dark-gray);
+    text-align: center;
+    padding: var(--spacing-md);
+}
+
+/* 상태 섹션 */
+.status-section {
+    text-align: right;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.status-badge.complete {
+    background: var(--success);
+    color: white;
+}
+
+.status-badge.incomplete {
+    background: var(--warning);
+    color: var(--charcoal);
+}
+
+/* 페이지네이션 */
+.pagination-section {
+    margin-top: var(--spacing-2xl);
+    text-align: center;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.pagination-link,
+.pagination-current,
+.pagination-ellipsis {
+    display: inline-block;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    font-size: var(--text-sm);
+}
+
+.pagination-link {
+    background: var(--white);
+    color: var(--charcoal);
+    border: 2px solid var(--medium-gray);
+    transition: all 0.3s ease;
+}
+
+.pagination-link:hover {
+    background: var(--primary-pink);
+    color: white;
+    border-color: var(--primary-pink);
+}
+
+.pagination-current {
+    background: var(--primary-pink);
+    color: white;
+    border: 2px solid var(--primary-pink);
+}
+
+.pagination-ellipsis {
+    color: var(--dark-gray);
+}
+
+.pagination-info {
+    font-size: var(--text-sm);
+    color: var(--dark-gray);
+}
+
+/* 빈 상태 */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-3xl);
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.empty-state h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state p {
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* 네비게이션 */
+.navigation-section {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-2xl);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .history-container {
+        padding: 0 var(--spacing-md);
+    }
+    
+    .history-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .filter-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-actions {
+        justify-content: stretch;
+    }
+    
+    .filter-actions .btn {
+        flex: 1;
+    }
+    
+    .history-item {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+    
+    .history-date {
+        min-width: auto;
+        text-align: left;
+    }
+    
+    .question-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+    
+    .question-meta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .answer-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+    }
+    
+    .navigation-section {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 날짜 필터 기본값 설정
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    // 종료 날짜의 최대값을 오늘로 설정
+    const today = new Date().toISOString().split('T')[0];
+    if (endDateInput) {
+        endDateInput.max = today;
+    }
+    
+    // 시작 날짜가 변경되면 종료 날짜의 최소값 설정
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', function() {
+            endDateInput.min = this.value;
+        });
+        
+        endDateInput.addEventListener('change', function() {
+            startDateInput.max = this.value;
+        });
+    }
+});
+</script>
+{% endblock %}

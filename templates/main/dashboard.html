@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>안녕하세요, {{ current_user.name }}님! 👋</h1>
+        {% if current_user.is_connected_to_partner() %}
+            <p>{{ current_user.get_partner().name }}님과 함께하는 특별한 공간입니다.</p>
+        {% else %}
+            <p>파트너와 연결하여 더 많은 기능을 사용해보세요.</p>
+        {% endif %}
+    </div>
+    
+    {% if not current_user.is_connected_to_partner() %}
+    <div class="connection-card">
+        <div class="card-header">
+            <h2>💕 파트너 연결</h2>
+        </div>
+        <div class="card-content">
+            <p>파트너와 연결하여 D-Day, 일정, 질문 등의 기능을 함께 사용하세요.</p>
+            <div class="connection-actions">
+                <a href="{{ url_for('couple.connect') }}" class="btn btn-primary">파트너 연결하기</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="dashboard-grid">
+        <!-- D-Day 카드 -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>📅 D-Day</h3>
+                <a href="{{ url_for('dday.index') }}" class="card-link">더보기</a>
+            </div>
+            <div class="card-content" id="dday-content">
+                <div class="skeleton-loading">
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 60%;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 오늘의 일정 카드 -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>📋 오늘의 일정</h3>
+                <a href="{{ url_for('calendar.index') }}" class="card-link">더보기</a>
+            </div>
+            <div class="card-content" id="events-content">
+                <div class="skeleton-loading">
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text" style="width: 40%;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 오늘의 기분 카드 -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>😊 오늘의 기분</h3>
+                <a href="#" class="card-link" onclick="recordMood(); return false;">기분 기록</a>
+            </div>
+            <div class="card-content" id="mood-content">
+                <div class="skeleton-loading">
+                    <div class="mood-grid">
+                        <div class="mood-item">
+                            <div class="skeleton skeleton-text" style="width: 60%; margin: 0 auto;"></div>
+                            <div class="skeleton skeleton-avatar" style="margin: 10px auto;"></div>
+                        </div>
+                        <div class="mood-item">
+                            <div class="skeleton skeleton-text" style="width: 60%; margin: 0 auto;"></div>
+                            <div class="skeleton skeleton-avatar" style="margin: 10px auto;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 오늘의 질문 카드 -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>❓ 오늘의 질문</h3>
+                <a href="{{ url_for('questions.daily') }}" class="card-link">답변하기</a>
+            </div>
+            <div class="card-content">
+                <p>서로를 더 깊이 알아가는 시간을 가져보세요.</p>
+                <a href="{{ url_for('questions.daily') }}" class="btn btn-secondary btn-sm">질문 보기</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if current_user.is_connected_to_partner() %}
+    loadDashboardData();
+    {% endif %}
+});
+
+async function loadDashboardData() {
+    try {
+        const response = await fetch('{{ url_for("main.dashboard_data") }}');
+        const data = await response.json();
+        
+        updateDDayCard(data.ddays || []);
+        updateEventsCard(data.today_events || []);
+        updateMoodCard(data.today_moods || {});
+        
+    } catch (error) {
+        console.error('대시보드 데이터 로딩 실패:', error);
+    }
+}
+
+function updateDDayCard(ddays) {
+    const content = document.getElementById('dday-content');
+    
+    if (ddays.length === 0) {
+        content.innerHTML = '<p class="empty-state">등록된 D-Day가 없습니다.</p>';
+        return;
+    }
+    
+    const ddayHtml = ddays.map(dday => `
+        <div class="dday-item ${dday.is_past ? 'past' : ''}">
+            <div class="dday-title">${dday.title}</div>
+            <div class="dday-status">${dday.status_text}</div>
+        </div>
+    `).join('');
+    
+    content.innerHTML = ddayHtml;
+}
+
+function updateEventsCard(events) {
+    const content = document.getElementById('events-content');
+    
+    if (events.length === 0) {
+        content.innerHTML = '<p class="empty-state">오늘 일정이 없습니다.</p>';
+        return;
+    }
+    
+    const eventsHtml = events.map(event => `
+        <div class="event-item">
+            <div class="event-time">${event.start_time}</div>
+            <div class="event-title">${event.title}</div>
+            <div class="event-participant" style="color: ${event.participant_color}">
+                ${event.participant_text}
+            </div>
+        </div>
+    `).join('');
+    
+    content.innerHTML = eventsHtml;
+}
+
+function updateMoodCard(moods) {
+    const content = document.getElementById('mood-content');
+    
+    const myMood = moods.my_mood;
+    const partnerMood = moods.partner_mood;
+    
+    let moodHtml = '<div class="mood-grid">';
+    
+    // 내 기분
+    if (myMood) {
+        moodHtml += `
+            <div class="mood-item">
+                <div class="mood-label">나</div>
+                <div class="mood-emoji">${myMood.emoji}</div>
+                <div class="mood-text">${myMood.text}</div>
+            </div>
+        `;
+    } else {
+        moodHtml += `
+            <div class="mood-item">
+                <div class="mood-label">나</div>
+                <div class="mood-empty">기분을 기록해보세요</div>
+            </div>
+        `;
+    }
+    
+    // 파트너 기분
+    if (partnerMood) {
+        moodHtml += `
+            <div class="mood-item">
+                <div class="mood-label">파트너</div>
+                <div class="mood-emoji">${partnerMood.emoji}</div>
+                <div class="mood-text">${partnerMood.text}</div>
+            </div>
+        `;
+    } else {
+        moodHtml += `
+            <div class="mood-item">
+                <div class="mood-label">파트너</div>
+                <div class="mood-empty">아직 기록하지 않음</div>
+            </div>
+        `;
+    }
+    
+    moodHtml += '</div>';
+    content.innerHTML = moodHtml;
+}
+
+function recordMood() {
+    // 기분 기록 모달 또는 페이지로 이동
+    // 현재는 간단한 프롬프트로 구현
+    const moodLevel = prompt('오늘의 기분을 1-5로 입력해주세요 (1: 매우 나쁨, 5: 매우 좋음):');
+    
+    if (moodLevel && moodLevel >= 1 && moodLevel <= 5) {
+        const note = prompt('기분에 대한 간단한 메모를 남겨주세요 (선택사항):') || '';
+        
+        // 기분 기록 API 호출
+        fetch('/mood/api/record', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                mood_level: parseInt(moodLevel),
+                note: note,
+                date: new Date().toISOString().split('T')[0]
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('기분이 기록되었습니다!');
+                loadDashboardData(); // 대시보드 데이터 새로고침
+            } else {
+                alert('기분 기록에 실패했습니다: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('기분 기록 오류:', error);
+            alert('기분 기록 중 오류가 발생했습니다.');
+        });
+    }
+}
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}추억 검색{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>🔍 추억 검색</h2>
+                <a href="{{ url_for('memories.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 메모리 북으로
+                </a>
+            </div>
+
+            <!-- 검색 폼 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('memories.search') }}">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="q" 
+                                   value="{{ query }}" placeholder="제목이나 내용으로 검색하세요..."
+                                   autocomplete="off">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search"></i> 검색
+                            </button>
+                        </div>
+                        {% if query %}
+                        <div class="mt-2">
+                            <a href="{{ url_for('memories.search') }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-times"></i> 검색 초기화
+                            </a>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- 검색 결과 -->
+            {% if query %}
+            <div class="mb-3">
+                <h5>
+                    "{{ query }}" 검색 결과 
+                    <span class="badge bg-primary">{{ memories.total }}개</span>
+                </h5>
+            </div>
+            {% endif %}
+
+            {% if memories.items %}
+                <!-- 메모리 그리드 -->
+                <div class="row">
+                    {% for memory in memories.items %}
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="card h-100 memory-card">
+                            {% if memory.has_image() %}
+                            <img src="{{ memory.get_image_url() }}" class="card-img-top memory-image" alt="{{ memory.title }}">
+                            {% else %}
+                            <div class="card-img-top memory-placeholder d-flex align-items-center justify-content-center">
+                                <i class="fas fa-heart fa-3x text-muted"></i>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">
+                                    {% if query %}
+                                        {{ memory.title | highlight_search(query) | safe }}
+                                    {% else %}
+                                        {{ memory.title }}
+                                    {% endif %}
+                                </h5>
+                                <p class="card-text flex-grow-1">
+                                    {% set content_preview = memory.content[:100] %}
+                                    {% if query %}
+                                        {{ content_preview | highlight_search(query) | safe }}
+                                    {% else %}
+                                        {{ content_preview }}
+                                    {% endif %}
+                                    {% if memory.content|length > 100 %}...{% endif %}
+                                </p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar"></i> {{ memory.get_formatted_date() }}
+                                    </small>
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('memories.detail', memory_id=memory.id) }}" class="btn btn-primary btn-sm">
+                                            자세히 보기
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 페이지네이션 -->
+                {% if memories.pages > 1 %}
+                <nav aria-label="검색 결과 페이지네이션">
+                    <ul class="pagination justify-content-center">
+                        {% if memories.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('memories.search', q=query, page=memories.prev_num) }}">이전</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in memories.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != memories.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('memories.search', q=query, page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if memories.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('memories.search', q=query, page=memories.next_num) }}">다음</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    {% if query %}
+                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">검색 결과가 없습니다</h4>
+                        <p class="text-muted">"{{ query }}"와 일치하는 추억을 찾을 수 없어요</p>
+                        <div class="mt-3">
+                            <a href="{{ url_for('memories.search') }}" class="btn btn-outline-primary me-2">
+                                다시 검색하기
+                            </a>
+                            <a href="{{ url_for('memories.add') }}" class="btn btn-primary">
+                                새 추억 추가하기
+                            </a>
+                        </div>
+                    {% else %}
+                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">검색어를 입력해주세요</h4>
+                        <p class="text-muted">제목이나 내용으로 추억을 검색할 수 있어요</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.memory-card {
+    transition: transform 0.2s;
+}
+
+.memory-card:hover {
+    transform: translateY(-5px);
+}
+
+.memory-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.memory-placeholder {
+    height: 200px;
+    background-color: #f8f9fa;
+}
+
+.card-text {
+    line-height: 1.5;
+}
+
+.highlight {
+    background-color: #fff3cd;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+</style>
+
+<script>
+// 검색 입력 필드에 포커스
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
+});
+
+// 엔터 키로 검색
+document.querySelector('input[name="q"]').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        this.closest('form').submit();
+    }
+});
+</script>
+{% endblock %}

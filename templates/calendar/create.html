@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}일정 등록 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📅 일정 등록</h1>
+        <p>새로운 일정을 등록하세요</p>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" class="form" data-validate>
+                <div class="form-group">
+                    <label for="title">제목 <span class="required">*</span></label>
+                    <input type="text" id="title" name="title" 
+                           class="form-control" 
+                           placeholder="일정 제목을 입력하세요"
+                           data-validate="required|max:100"
+                           required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">설명</label>
+                    <textarea id="description" name="description" 
+                              class="form-control" 
+                              rows="3"
+                              placeholder="일정에 대한 설명을 입력하세요 (선택사항)"
+                              data-validate="max:500"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="start_date">시작 날짜 <span class="required">*</span></label>
+                        <input type="date" id="start_date" name="start_date" 
+                               class="form-control"
+                               data-validate="required"
+                               required>
+                    </div>
+                    
+                    <div class="form-group col-md-6">
+                        <label for="start_time">시작 시간 <span class="required">*</span></label>
+                        <input type="time" id="start_time" name="start_time" 
+                               class="form-control"
+                               data-validate="required"
+                               required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="end_date">종료 날짜 <span class="required">*</span></label>
+                        <input type="date" id="end_date" name="end_date" 
+                               class="form-control"
+                               data-validate="required"
+                               required>
+                    </div>
+                    
+                    <div class="form-group col-md-6">
+                        <label for="end_time">종료 시간 <span class="required">*</span></label>
+                        <input type="time" id="end_time" name="end_time" 
+                               class="form-control"
+                               data-validate="required"
+                               required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="participant_type">참여자 <span class="required">*</span></label>
+                    <select id="participant_type" name="participant_type" 
+                            class="form-control"
+                            data-validate="required"
+                            required>
+                        <option value="">참여자를 선택하세요</option>
+                        <option value="both">둘 다</option>
+                        <option value="user1">나만</option>
+                        <option value="user2">파트너만</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="icon-plus"></i> 일정 등록
+                    </button>
+                    <a href="{{ url_for('calendar.index') }}" class="btn btn-secondary">
+                        <i class="icon-arrow-left"></i> 취소
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const startTimeInput = document.getElementById('start_time');
+    const endTimeInput = document.getElementById('end_time');
+    
+    // 오늘 날짜를 기본값으로 설정
+    const today = new Date().toISOString().split('T')[0];
+    startDateInput.value = today;
+    endDateInput.value = today;
+    
+    // 현재 시간을 기본값으로 설정
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+    startTimeInput.value = currentTime;
+    
+    // 종료 시간을 1시간 후로 설정
+    const endTime = new Date(now.getTime() + 60 * 60 * 1000);
+    endTimeInput.value = endTime.toTimeString().slice(0, 5);
+    
+    // 시작 날짜가 변경되면 종료 날짜도 같이 변경
+    startDateInput.addEventListener('change', function() {
+        if (endDateInput.value < this.value) {
+            endDateInput.value = this.value;
+        }
+    });
+    
+    // 폼 검증
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const startDate = startDateInput.value;
+        const startTime = startTimeInput.value;
+        const endDate = endDateInput.value;
+        const endTime = endTimeInput.value;
+        
+        if (startDate && startTime && endDate && endTime) {
+            const startDateTime = new Date(`${startDate}T${startTime}`);
+            const endDateTime = new Date(`${endDate}T${endTime}`);
+            
+            if (startDateTime >= endDateTime) {
+                e.preventDefault();
+                alert('종료 시간은 시작 시간보다 늦어야 합니다.');
+                return false;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

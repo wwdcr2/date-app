@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}메모리 북{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>📖 메모리 북</h2>
+                <div>
+                    <a href="{{ url_for('memories.search') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-search"></i> 검색
+                    </a>
+                    <a href="{{ url_for('memories.add') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 추억 추가
+                    </a>
+                </div>
+            </div>
+
+            <!-- 통계 카드 -->
+            <div class="row mb-4" id="stats-cards">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-primary">총 추억</h5>
+                            <h3 class="card-text" id="total-memories">-</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-success">이번 달</h5>
+                            <h3 class="card-text" id="this-month-memories">-</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-info">사진 추억</h5>
+                            <h3 class="card-text" id="memories-with-images">-</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if memories.items %}
+                <!-- 메모리 그리드 -->
+                <div class="row">
+                    {% for memory in memories.items %}
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="card h-100 memory-card">
+                            {% if memory.has_image() %}
+                            <img src="{{ memory.get_image_url() }}" class="card-img-top memory-image" alt="{{ memory.title }}">
+                            {% else %}
+                            <div class="card-img-top memory-placeholder d-flex align-items-center justify-content-center">
+                                <i class="fas fa-heart fa-3x text-muted"></i>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ memory.title }}</h5>
+                                <p class="card-text flex-grow-1">
+                                    {{ memory.content[:100] }}{% if memory.content|length > 100 %}...{% endif %}
+                                </p>
+                                <div class="mt-auto">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar"></i> {{ memory.get_formatted_date() }}
+                                    </small>
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('memories.detail', memory_id=memory.id) }}" class="btn btn-primary btn-sm">
+                                            자세히 보기
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 페이지네이션 -->
+                {% if memories.pages > 1 %}
+                <nav aria-label="메모리 페이지네이션">
+                    <ul class="pagination justify-content-center">
+                        {% if memories.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('memories.index', page=memories.prev_num) }}">이전</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in memories.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != memories.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('memories.index', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if memories.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('memories.index', page=memories.next_num) }}">다음</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-heart fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">아직 저장된 추억이 없어요</h4>
+                    <p class="text-muted">첫 번째 추억을 만들어보세요!</p>
+                    <a href="{{ url_for('memories.add') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 추억 추가하기
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.memory-card {
+    transition: transform 0.2s;
+}
+
+.memory-card:hover {
+    transform: translateY(-5px);
+}
+
+.memory-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.memory-placeholder {
+    height: 200px;
+    background-color: #f8f9fa;
+}
+
+.card-text {
+    line-height: 1.5;
+}
+</style>
+
+<script>
+// 통계 데이터 로드
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('{{ url_for("memories.api_stats") }}')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-memories').textContent = data.total_memories;
+            document.getElementById('this-month-memories').textContent = data.this_month_memories;
+            document.getElementById('memories-with-images').textContent = data.memories_with_images;
+        })
+        .catch(error => {
+            console.error('통계 데이터 로드 실패:', error);
+        });
+});
+</script>
+{% endblock %}

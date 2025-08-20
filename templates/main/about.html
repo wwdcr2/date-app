@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}소개 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="about-container">
+    <div class="about-header">
+        <h1>💕 커플 앱에 대해</h1>
+        <p>함께하는 특별한 공간을 만들어가는 이야기</p>
+    </div>
+
+    <div class="about-content">
+        <section class="about-section">
+            <h2>우리의 미션</h2>
+            <p>
+                커플 앱은 연인들이 서로를 더 깊이 이해하고, 소중한 추억을 함께 만들어갈 수 있도록 돕는 것을 목표로 합니다.
+                복잡하지 않고 따뜻한 디자인으로, 일상 속에서 자연스럽게 사용할 수 있는 공간을 제공합니다.
+            </p>
+        </section>
+
+        <section class="about-section">
+            <h2>주요 기능</h2>
+            <div class="features-list">
+                <div class="feature-item">
+                    <div class="feature-icon">📅</div>
+                    <div class="feature-content">
+                        <h3>D-Day & 일정 관리</h3>
+                        <p>중요한 기념일과 데이트 일정을 함께 관리하고, 특별한 날들을 놓치지 않도록 도와드립니다.</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">❓</div>
+                    <div class="feature-content">
+                        <h3>매일 새로운 질문</h3>
+                        <p>서로를 더 깊이 알아가는 질문들로 대화의 시간을 만들고, 관계를 더욱 돈독하게 만들어보세요.</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📖</div>
+                    <div class="feature-content">
+                        <h3>메모리 북</h3>
+                        <p>소중한 추억과 순간들을 사진과 함께 기록하여 둘만의 특별한 앨범을 만들어보세요.</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">😊</div>
+                    <div class="feature-content">
+                        <h3>무드 트래커</h3>
+                        <p>매일의 기분을 공유하고 서로의 감정 변화를 이해하며, 더 나은 소통을 할 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="about-section">
+            <h2>디자인 철학</h2>
+            <div class="philosophy-grid">
+                <div class="philosophy-item">
+                    <h3>🎨 미니멀 디자인</h3>
+                    <p>불필요한 요소를 제거하고 정말 중요한 것에만 집중할 수 있도록 깔끔하고 직관적인 인터페이스를 제공합니다.</p>
+                </div>
+
+                <div class="philosophy-item">
+                    <h3>💖 따뜻한 색감</h3>
+                    <p>부드럽고 따뜻한 색상 팔레트로 편안하고 친근한 느낌을 주어, 매일 사용하고 싶은 공간을 만들었습니다.</p>
+                </div>
+
+                <div class="philosophy-item">
+                    <h3>📱 반응형 디자인</h3>
+                    <p>모바일, 태블릿, 데스크톱 어디서든 최적화된 경험을 제공하여 언제 어디서나 편리하게 사용할 수 있습니다.</p>
+                </div>
+
+                <div class="philosophy-item">
+                    <h3>🔒 프라이버시 중심</h3>
+                    <p>둘만의 소중한 이야기와 추억을 안전하게 보호하며, 개인정보 보안을 최우선으로 생각합니다.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="about-section">
+            <h2>시작하기</h2>
+            <div class="getting-started">
+                <p>
+                    커플 앱을 사용하기 위해서는 먼저 회원가입을 하고, 파트너와 연결하는 과정이 필요합니다.
+                    간단한 초대 코드를 통해 쉽게 연결할 수 있으며, 연결 후에는 모든 기능을 함께 사용할 수 있습니다.
+                </p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">회원가입</a>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">로그인</a>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 소개 페이지 스타일 */
+.about-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--spacing-2xl) var(--spacing-lg);
+}
+
+.about-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.about-header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+.about-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xl);
+}
+
+.about-section {
+    background: var(--white);
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.about-section h2 {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+}
+
+.about-section p {
+    color: var(--dark-gray);
+    line-height: 1.7;
+    font-size: var(--text-base);
+}
+
+/* 기능 목록 */
+.features-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.feature-item {
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: flex-start;
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+}
+
+.feature-content h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.feature-content p {
+    color: var(--dark-gray);
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* 철학 그리드 */
+.philosophy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-xl);
+}
+
+.philosophy-item {
+    text-align: center;
+    padding: var(--spacing-lg);
+    background: var(--light-gray);
+    border-radius: var(--radius-lg);
+}
+
+.philosophy-item h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+.philosophy-item p {
+    color: var(--dark-gray);
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* 시작하기 섹션 */
+.getting-started {
+    text-align: center;
+}
+
+.getting-started p {
+    margin-bottom: var(--spacing-xl);
+    font-size: var(--text-lg);
+    line-height: 1.7;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: var(--spacing-lg);
+    justify-content: center;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .about-container {
+        padding: var(--spacing-xl) var(--spacing-md);
+    }
+    
+    .about-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .about-header p {
+        font-size: var(--text-base);
+    }
+    
+    .about-section {
+        padding: var(--spacing-xl);
+    }
+    
+    .about-section h2 {
+        font-size: var(--text-xl);
+    }
+    
+    .feature-item {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--spacing-md);
+    }
+    
+    .philosophy-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn {
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .about-container {
+        padding: var(--spacing-lg) var(--spacing-sm);
+    }
+    
+    .about-section {
+        padding: var(--spacing-lg);
+    }
+    
+    .feature-icon {
+        font-size: 2rem;
+    }
+    
+    .philosophy-item {
+        padding: var(--spacing-md);
+    }
+}
+</style>
+{% endblock %}

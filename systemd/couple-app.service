@@ -1,0 +1,38 @@
+# Systemd 서비스 파일 예시
+# /etc/systemd/system/couple-app.service
+
+[Unit]
+Description=Couple Web Application
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/your/app
+Environment=PATH=/path/to/your/app/venv/bin
+Environment=FLASK_ENV=production
+ExecStart=/path/to/your/app/venv/bin/gunicorn -c gunicorn.conf.py wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=on-failure
+RestartSec=10
+
+# 보안 설정
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/path/to/your/app/logs /path/to/your/app/uploads /path/to/your/app/instance
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# 리소스 제한
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

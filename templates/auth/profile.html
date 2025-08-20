@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+
+{% block title %}프로필 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h1>👤 내 프로필</h1>
+        <p>계정 정보를 확인하고 관리하세요</p>
+    </div>
+    
+    <div class="profile-content">
+        <!-- 기본 정보 카드 -->
+        <div class="profile-card">
+            <div class="card-header">
+                <h3>기본 정보</h3>
+                <button class="btn btn-sm btn-secondary" onclick="toggleEditMode()">
+                    <span id="edit-btn-text">수정</span>
+                </button>
+            </div>
+            <div class="card-content">
+                <div class="profile-info" id="profile-view">
+                    <div class="info-item">
+                        <label>이름</label>
+                        <span>{{ current_user.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>이메일</label>
+                        <span>{{ current_user.email }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>가입일</label>
+                        <span>{{ current_user.created_at.strftime('%Y년 %m월 %d일') }}</span>
+                    </div>
+                </div>
+                
+                <form class="profile-edit" id="profile-edit" style="display: none;">
+                    <div class="form-group">
+                        <label for="name">이름</label>
+                        <input type="text" id="name" name="name" value="{{ current_user.name }}" required>
+                        <div class="form-error" id="name-error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">이메일</label>
+                        <input type="email" id="email" name="email" value="{{ current_user.email }}" required>
+                        <div class="form-error" id="email-error"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelEdit()">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 파트너 정보 카드 -->
+        <div class="profile-card">
+            <div class="card-header">
+                <h3>파트너 정보</h3>
+                {% if current_user.is_connected_to_partner() %}
+                    <button class="btn btn-sm btn-outline" onclick="showDisconnectModal()">
+                        연결 해제
+                    </button>
+                {% endif %}
+            </div>
+            <div class="card-content">
+                {% if current_user.is_connected_to_partner() %}
+                    {% set partner = current_user.get_partner() %}
+                    <div class="partner-info">
+                        <div class="partner-avatar">💕</div>
+                        <div class="partner-details">
+                            <h4>{{ partner.name }}</h4>
+                            <p>{{ partner.email }}</p>
+                            <small>{{ partner.created_at.strftime('%Y년 %m월 %d일') }} 가입</small>
+                        </div>
+                    </div>
+                    <div class="connection-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">연결일</span>
+                            <span class="stat-value">{{ current_user.get_couple_connection().connected_at.strftime('%Y년 %m월 %d일') }}</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="no-partner">
+                        <div class="no-partner-icon">💔</div>
+                        <p>아직 파트너와 연결되지 않았습니다.</p>
+                        <a href="{{ url_for('couple.connect') }}" class="btn btn-primary">파트너 연결하기</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 계정 설정 카드 -->
+        <div class="profile-card">
+            <div class="card-header">
+                <h3>계정 설정</h3>
+            </div>
+            <div class="card-content">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>비밀번호 변경</h4>
+                        <p>계정 보안을 위해 정기적으로 비밀번호를 변경하세요</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="showPasswordModal()">
+                        변경
+                    </button>
+                </div>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>계정 삭제</h4>
+                        <p>계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다</p>
+                    </div>
+                    <button class="btn btn-outline btn-danger" onclick="showDeleteModal()">
+                        삭제
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 비밀번호 변경 모달 -->
+<div class="modal" id="password-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>비밀번호 변경</h3>
+            <button class="modal-close" onclick="hidePasswordModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="password-form">
+                <div class="form-group">
+                    <label for="current-password">현재 비밀번호</label>
+                    <input type="password" id="current-password" name="current_password" required>
+                    <div class="form-error" id="current-password-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="new-password">새 비밀번호</label>
+                    <input type="password" id="new-password" name="new_password" required minlength="6">
+                    <div class="form-error" id="new-password-error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">새 비밀번호 확인</label>
+                    <input type="password" id="confirm-password" name="confirm_password" required>
+                    <div class="form-error" id="confirm-password-error"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">변경</button>
+                    <button type="button" class="btn btn-secondary" onclick="hidePasswordModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 연결 해제 확인 모달 -->
+<div class="modal" id="disconnect-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>파트너 연결 해제</h3>
+            <button class="modal-close" onclick="hideDisconnectModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>정말로 파트너와의 연결을 해제하시겠습니까?</p>
+            <p><strong>주의:</strong> 연결을 해제하면 공유된 모든 데이터(D-Day, 일정, 추억 등)에 접근할 수 없게 됩니다.</p>
+            <div class="form-actions">
+                <button class="btn btn-danger" onclick="disconnectPartner()">연결 해제</button>
+                <button class="btn btn-secondary" onclick="hideDisconnectModal()">취소</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 계정 삭제 확인 모달 -->
+<div class="modal" id="delete-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>계정 삭제</h3>
+            <button class="modal-close" onclick="hideDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>정말로 계정을 삭제하시겠습니까?</p>
+            <p><strong>경고:</strong> 이 작업은 되돌릴 수 없으며, 모든 데이터가 영구적으로 삭제됩니다.</p>
+            <div class="form-group">
+                <label for="delete-confirm">삭제를 확인하려면 "삭제"를 입력하세요</label>
+                <input type="text" id="delete-confirm" placeholder="삭제">
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-danger" onclick="deleteAccount()" disabled id="delete-btn">계정 삭제</button>
+                <button class="btn btn-secondary" onclick="hideDeleteModal()">취소</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.profile-header h1 {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--spacing-sm);
+    color: var(--charcoal);
+}
+
+.profile-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+.profile-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.profile-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.profile-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--medium-gray);
+    background: var(--light-gray);
+}
+
+.profile-card .card-header h3 {
+    margin: 0;
+    font-size: var(--text-lg);
+    color: var(--charcoal);
+}
+
+.profile-card .card-content {
+    padding: var(--spacing-lg);
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item label {
+    font-weight: 600;
+    color: var(--charcoal);
+    margin: 0;
+}
+
+.info-item span {
+    color: var(--dark-gray);
+}
+
+.partner-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.partner-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-2xl);
+}
+
+.partner-details h4 {
+    margin: 0 0 var(--spacing-xs) 0;
+    color: var(--charcoal);
+}
+
+.partner-details p {
+    margin: 0 0 var(--spacing-xs) 0;
+    color: var(--dark-gray);
+}
+
+.partner-details small {
+    color: var(--dark-gray);
+    font-size: var(--text-sm);
+}
+
+.connection-stats {
+    padding: var(--spacing-md);
+    background: var(--light-gray);
+    border-radius: var(--radius-md);
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-label {
+    font-weight: 500;
+    color: var(--charcoal);
+}
+
+.stat-value {
+    color: var(--dark-gray);
+}
+
+.no-partner {
+    text-align: center;
+    padding: var(--spacing-2xl);
+}
+
+.no-partner-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.5;
+}
+
+.no-partner p {
+    margin-bottom: var(--spacing-lg);
+    color: var(--dark-gray);
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) 0;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-info h4 {
+    margin: 0 0 var(--spacing-xs) 0;
+    color: var(--charcoal);
+}
+
+.setting-info p {
+    margin: 0;
+    color: var(--dark-gray);
+    font-size: var(--text-sm);
+}
+
+.btn-danger {
+    background: var(--error);
+    color: var(--white);
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-outline.btn-danger {
+    background: transparent;
+    border: 2px solid var(--error);
+    color: var(--error);
+}
+
+.btn-outline.btn-danger:hover {
+    background: var(--error);
+    color: var(--white);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+    
+    .partner-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isEditMode = false;
+
+function toggleEditMode() {
+    const profileView = document.getElementById('profile-view');
+    const profileEdit = document.getElementById('profile-edit');
+    const editBtnText = document.getElementById('edit-btn-text');
+    
+    if (isEditMode) {
+        profileView.style.display = 'block';
+        profileEdit.style.display = 'none';
+        editBtnText.textContent = '수정';
+        isEditMode = false;
+    } else {
+        profileView.style.display = 'none';
+        profileEdit.style.display = 'block';
+        editBtnText.textContent = '취소';
+        isEditMode = true;
+    }
+}
+
+function cancelEdit() {
+    toggleEditMode();
+    // 폼 리셋
+    document.getElementById('profile-edit').reset();
+    clearErrors();
+}
+
+function showPasswordModal() {
+    document.getElementById('password-modal').style.display = 'flex';
+}
+
+function hidePasswordModal() {
+    document.getElementById('password-modal').style.display = 'none';
+    document.getElementById('password-form').reset();
+    clearErrors();
+}
+
+function showDisconnectModal() {
+    document.getElementById('disconnect-modal').style.display = 'flex';
+}
+
+function hideDisconnectModal() {
+    document.getElementById('disconnect-modal').style.display = 'none';
+}
+
+function showDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function hideDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+    document.getElementById('delete-confirm').value = '';
+    document.getElementById('delete-btn').disabled = true;
+}
+
+// 계정 삭제 확인 입력 검증
+document.getElementById('delete-confirm').addEventListener('input', function() {
+    const deleteBtn = document.getElementById('delete-btn');
+    if (this.value === '삭제') {
+        deleteBtn.disabled = false;
+    } else {
+        deleteBtn.disabled = true;
+    }
+});
+
+// 비밀번호 확인 검증
+document.getElementById('confirm-password').addEventListener('input', function() {
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = this.value;
+    const errorEl = document.getElementById('confirm-password-error');
+    
+    if (confirmPassword && newPassword !== confirmPassword) {
+        errorEl.textContent = '비밀번호가 일치하지 않습니다.';
+    } else {
+        errorEl.textContent = '';
+    }
+});
+
+async function disconnectPartner() {
+    try {
+        const response = await fetch('{{ url_for("couple.disconnect") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('연결 해제 중 오류가 발생했습니다.', 'error');
+    } finally {
+        hideDisconnectModal();
+    }
+}
+
+function deleteAccount() {
+    // TODO: 계정 삭제 API 구현
+    showToast('계정 삭제 기능은 추후 구현될 예정입니다.', 'info');
+    hideDeleteModal();
+}
+
+function clearErrors() {
+    document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+}
+</script>
+{% endblock %}

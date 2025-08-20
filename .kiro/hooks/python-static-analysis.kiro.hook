@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "신규파일 정적분석",
+  "description": "새로운 *.py, *.tf 파일이 추가될 때 SonarCube 스타일로 정적분석을 수행합니다. 코드 품질, 보안 취약점, 코드 스멜, 복잡도 등을 분석하여 리포트를 제공합니다.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py",
+      "**/*.tf"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "새로운 Python/Terraform 파일이 추가되었습니다. SonarCube 스타일로 정적분석을 수행해주세요:\n\n1. 코드 품질 분석 (Code Quality)\n   - 코딩 표준 준수 여부 (PEP 8)\n   - 네이밍 컨벤션\n   - 코드 구조와 가독성\n\n2. 보안 취약점 분석 (Security Vulnerabilities)\n   - SQL 인젝션 가능성\n   - 하드코딩된 비밀번호/키\n   - 안전하지 않은 함수 사용\n\n3. 코드 스멜 분석 (Code Smells)\n   - 중복 코드\n   - 긴 함수/클래스\n   - 복잡한 조건문\n   - 사용하지 않는 변수/import\n\n4. 복잡도 분석 (Complexity)\n   - 순환 복잡도 (Cyclomatic Complexity)\n   - 인지 복잡도 (Cognitive Complexity)\n\n5. 유지보수성 분석 (Maintainability)\n   - 기술 부채 추정\n   - 리팩토링 제안\n\n분석 결과를 한국어로 상세히 리포트해주세요. 단, 실제 코드 수정이나 개선은 하지 마세요."
+  }
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSRF 토큰 임시 비활성화 -->
+    <title>{% block title %}커플 앱{% endblock %}</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ui-enhancements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
+</head>
+<body data-user-authenticated="{% if current_user.is_authenticated %}true{% else %}false{% endif %}">
+    <!-- 네비게이션 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('main.index') }}" class="nav-brand">
+                💕 커플 앱
+            </a>
+            
+            <div class="nav-menu">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('main.dashboard') }}" class="nav-link">대시보드</a>
+                    {% if current_user.is_connected_to_partner() %}
+                        <a href="{{ url_for('dday.index') }}" class="nav-link">D-Day</a>
+                        <a href="{{ url_for('calendar.index') }}" class="nav-link">캘린더</a>
+                        <a href="{{ url_for('questions.daily') }}" class="nav-link">오늘의 질문</a>
+                        <a href="{{ url_for('mood.index') }}" class="nav-link">무드 트래커</a>
+                        <a href="{{ url_for('memories.index') }}" class="nav-link">메모리 북</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.profile') }}" class="nav-link">프로필</a>
+                    <a href="{{ url_for('auth.logout') }}" class="nav-link">로그아웃</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="nav-link">로그인</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-link">회원가입</a>
+                {% endif %}
+                
+                <!-- 테마 토글 버튼 -->
+                <button class="theme-toggle" id="theme-toggle" title="테마 변경">
+                    <span class="theme-icon sun-icon">☀️</span>
+                    <span class="theme-icon moon-icon">🌙</span>
+                </button>
+            </div>
+            
+            <!-- 모바일 메뉴 토글 -->
+            <div class="nav-toggle" id="nav-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 플래시 메시지 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <span class="flash-text">{{ message }}</span>
+                        <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- 메인 콘텐츠 -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2025 커플 앱. Made with 💕</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui-utils.js') }}"></script>
+    {% if current_user.is_authenticated %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+    {% endif %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

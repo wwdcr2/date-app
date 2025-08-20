@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Manual Code Static Analyzer",
+  "description": "Monitors source code files for changes and provides automated code quality analysis including code smells, design patterns, and best practices suggestions",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "patterns": [
+      "app/**/*.py",
+      "*.py",
+      "scripts/**/*.py",
+      "tests/**/*.py",
+      "static/js/**/*.js",
+      "static/css/**/*.css"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "코드 품질을 점검해줘. 개선하거나 직접 수정하지는 마\n점검 대상 파일 조건은 다음과 같아. 조건에 맞지 않는 파일은 점검하지마.\n- *.py 파일을 대상으로 해\n- test*.py 파일은 점검 대상에 포함하지마\n\nSonaCube의 스타일로 정적 분석을 진행하고, 평가 결과를 수치로 제공해줘."
+  }
+}

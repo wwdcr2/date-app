@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}로그인 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>로그인</h1>
+            <p>계정에 로그인하여 파트너와 함께하세요</p>
+        </div>
+        
+        <form class="auth-form" id="login-form" method="POST" data-validate>
+            <div class="form-group">
+                <label for="email">이메일</label>
+                <input type="email" id="email" name="email" 
+                       data-validate="required|email"
+                       placeholder="이메일을 입력하세요"
+                       autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" name="password" 
+                       data-validate="required|min:6"
+                       placeholder="비밀번호를 입력하세요"
+                       autocomplete="current-password">
+            </div>
+            
+            <div class="form-group form-checkbox">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="remember_me" name="remember_me">
+                    <span class="checkbox-custom"></span>
+                    로그인 상태 유지
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                로그인
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>계정이 없으신가요? <a href="{{ url_for('auth.register') }}">회원가입</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('login-btn');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // 버튼 비활성화
+        submitBtn.disabled = true;
+        submitBtn.textContent = '처리 중...';
+        
+        // 에러 메시지 초기화
+        clearErrors();
+        
+        const formData = new FormData(form);
+        const data = {
+            email: formData.get('email'),
+            password: formData.get('password'),
+            remember_me: formData.get('remember_me') === 'on'
+        };
+        
+        try {
+            const response = await fetch('{{ url_for("auth.login") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                // 즉시 리다이렉트
+                window.location.href = result.redirect_url;
+            } else {
+                showErrors(result.errors);
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            showMessage('로그인 중 오류가 발생했습니다.', 'error');
+        } finally {
+            // 버튼 상태 복원
+            submitBtn.disabled = false;
+            submitBtn.textContent = '로그인';
+        }
+    });
+    
+    function clearErrors() {
+        document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+    }
+    
+    function showErrors(errors) {
+        errors.forEach(error => {
+            showMessage(error, 'error');
+        });
+    }
+    
+    function showMessage(message, type) {
+        const flashContainer = document.querySelector('.flash-messages') || createFlashContainer();
+        const flashDiv = document.createElement('div');
+        flashDiv.className = `flash-message flash-${type}`;
+        flashDiv.innerHTML = `
+            <span class="flash-text">${message}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+        `;
+        flashContainer.appendChild(flashDiv);
+        
+        // 3초 후 자동 제거
+        setTimeout(() => {
+            if (flashDiv.parentElement) {
+                flashDiv.remove();
+            }
+        }, 3000);
+    }
+    
+    function createFlashContainer() {
+        const container = document.createElement('div');
+        container.className = 'flash-messages';
+        document.querySelector('.main-content').insertBefore(container, document.querySelector('.main-content').firstChild);
+        return container;
+    }
+});
+</script>
+{% endblock %}

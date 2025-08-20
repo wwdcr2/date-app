@@ -1,0 +1,574 @@
+{% extends "base.html" %}
+
+{% block title %}파트너 연결 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="connect-container">
+    <div class="connect-header">
+        <h1>💕 파트너와 연결하기</h1>
+        <p>파트너와 연결하여 함께 특별한 순간들을 만들어보세요</p>
+    </div>
+    
+    <div class="connect-options">
+        <div class="connect-card">
+            <div class="card-icon">📤</div>
+            <h3>초대 코드 생성</h3>
+            <p>새로운 초대 코드를 생성하여 파트너에게 공유하세요</p>
+            <button class="btn btn-primary btn-full" onclick="generateInviteCode()">
+                초대 코드 생성
+            </button>
+        </div>
+        
+        <div class="connect-divider">
+            <span>또는</span>
+        </div>
+        
+        <div class="connect-card">
+            <div class="card-icon">📥</div>
+            <h3>초대 코드 입력</h3>
+            <p>파트너로부터 받은 초대 코드를 입력하여 연결하세요</p>
+            <div class="invite-input-group">
+                <input type="text" id="invite-code-input" placeholder="초대 코드 입력 (6자리)" 
+                       maxlength="6" class="invite-code-field">
+                <button class="btn btn-secondary" onclick="joinWithCode()">
+                    연결하기
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 생성된 초대 코드 표시 영역 -->
+    <div class="invite-code-display" id="invite-display" style="display: none;">
+        <div class="invite-card">
+            <h3>🎉 초대 코드가 생성되었습니다!</h3>
+            <p>아래 코드를 파트너에게 공유하세요:</p>
+            
+            <div class="invite-code-box">
+                <span class="invite-code-text" id="generated-code">------</span>
+                <button class="btn btn-sm btn-copy" onclick="copyInviteCode()" title="복사">
+                    📋
+                </button>
+            </div>
+            
+            <div class="invite-actions">
+                <button class="btn btn-secondary btn-sm" onclick="shareInviteCode()">
+                    공유하기
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="cancelInviteCode()">
+                    취소
+                </button>
+            </div>
+            
+            <div class="invite-help">
+                <p><strong>💡 사용 방법:</strong></p>
+                <ol>
+                    <li>위 코드를 파트너에게 전달하세요</li>
+                    <li>파트너가 "초대 코드 입력"에서 코드를 입력합니다</li>
+                    <li>연결이 완료되면 함께 앱을 사용할 수 있습니다</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 대기 중인 초대 코드 표시 영역 -->
+    <div class="pending-invite" id="pending-invite" style="display: none;">
+        <div class="pending-card">
+            <h3>⏳ 대기 중인 초대 코드</h3>
+            <p>파트너의 연결을 기다리고 있습니다:</p>
+            
+            <div class="invite-code-box">
+                <span class="invite-code-text" id="pending-code">------</span>
+                <button class="btn btn-sm btn-copy" onclick="copyPendingCode()" title="복사">
+                    📋
+                </button>
+            </div>
+            
+            <div class="invite-actions">
+                <button class="btn btn-secondary btn-sm" onclick="sharePendingCode()">
+                    다시 공유하기
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="cancelPendingInvite()">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 로딩 모달 -->
+<div class="modal" id="loading-modal" style="display: none;">
+    <div class="modal-content modal-sm">
+        <div class="modal-body text-center">
+            <div class="loading-spinner"></div>
+            <p id="loading-text">처리 중...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.connect-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.connect-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.connect-header h1 {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--spacing-sm);
+    color: var(--charcoal);
+}
+
+.connect-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+}
+
+.connect-options {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--spacing-xl);
+    align-items: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.connect-card {
+    background: var(--white);
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.connect-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.card-icon {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.connect-card h3 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--spacing-md);
+    color: var(--charcoal);
+}
+
+.connect-card p {
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-lg);
+    line-height: 1.6;
+}
+
+.connect-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.connect-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 60px;
+    background: var(--medium-gray);
+}
+
+.connect-divider span {
+    background: var(--white);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 2px solid var(--medium-gray);
+    border-radius: var(--radius-md);
+    color: var(--dark-gray);
+    font-weight: 500;
+    z-index: 1;
+    position: relative;
+}
+
+.invite-input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.invite-code-field {
+    flex: 1;
+    text-align: center;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.invite-code-display,
+.pending-invite {
+    margin-top: var(--spacing-2xl);
+}
+
+.invite-card,
+.pending-card {
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    text-align: center;
+    color: var(--charcoal);
+}
+
+.invite-card h3,
+.pending-card h3 {
+    margin-bottom: var(--spacing-md);
+    font-size: var(--text-xl);
+}
+
+.invite-card p,
+.pending-card p {
+    margin-bottom: var(--spacing-lg);
+}
+
+.invite-code-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    background: var(--white);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    margin: var(--spacing-lg) 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.invite-code-text {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--accent-coral);
+    font-family: 'Courier New', monospace;
+}
+
+.btn-copy {
+    background: var(--accent-coral);
+    color: var(--white);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-copy:hover {
+    background: #ff9f8f;
+    transform: scale(1.1);
+}
+
+.invite-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--charcoal);
+    color: var(--charcoal);
+}
+
+.btn-outline:hover {
+    background: var(--charcoal);
+    color: var(--white);
+}
+
+.invite-help {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    text-align: left;
+}
+
+.invite-help p {
+    margin-bottom: var(--spacing-sm);
+    font-weight: 600;
+}
+
+.invite-help ol {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+}
+
+.invite-help li {
+    margin-bottom: var(--spacing-xs);
+}
+
+.modal-sm {
+    max-width: 300px;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--medium-gray);
+    border-top: 4px solid var(--accent-coral);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .connect-options {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .connect-divider {
+        order: -1;
+        margin: var(--spacing-lg) 0;
+    }
+    
+    .connect-divider::before {
+        width: 60px;
+        height: 2px;
+    }
+    
+    .invite-input-group {
+        flex-direction: column;
+    }
+    
+    .invite-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 페이지 로드 시 대기 중인 초대 코드 확인
+    checkPendingInvites();
+    
+    // 초대 코드 입력 필드 자동 대문자 변환
+    const inviteInput = document.getElementById('invite-code-input');
+    inviteInput.addEventListener('input', function() {
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+});
+
+async function generateInviteCode() {
+    showLoading('초대 코드 생성 중...');
+    
+    try {
+        const response = await fetch('{{ url_for("couple.generate_invite") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('generated-code').textContent = result.invite_code;
+            document.getElementById('invite-display').style.display = 'block';
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('초대 코드 생성 중 오류가 발생했습니다.', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function joinWithCode() {
+    const inviteCode = document.getElementById('invite-code-input').value.trim();
+    
+    if (!inviteCode) {
+        showToast('초대 코드를 입력해주세요.', 'warning');
+        return;
+    }
+    
+    if (inviteCode.length !== 6) {
+        showToast('초대 코드는 6자리여야 합니다.', 'warning');
+        return;
+    }
+    
+    showLoading('파트너와 연결 중...');
+    
+    try {
+        const response = await fetch('{{ url_for("couple.join_with_code") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ invite_code: inviteCode })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("main.dashboard") }}';
+            }, 2000);
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('연결 중 오류가 발생했습니다.', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function checkPendingInvites() {
+    try {
+        const response = await fetch('{{ url_for("couple.pending_invites") }}');
+        const result = await response.json();
+        
+        if (result.has_pending) {
+            document.getElementById('pending-code').textContent = result.invite_code;
+            document.getElementById('pending-invite').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('대기 중인 초대 코드 확인 실패:', error);
+    }
+}
+
+async function cancelInviteCode() {
+    if (!confirm('초대 코드를 취소하시겠습니까?')) {
+        return;
+    }
+    
+    showLoading('취소 중...');
+    
+    try {
+        const response = await fetch('{{ url_for("couple.cancel_invite") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('invite-display').style.display = 'none';
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('취소 중 오류가 발생했습니다.', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function cancelPendingInvite() {
+    if (!confirm('대기 중인 초대 코드를 취소하시겠습니까?')) {
+        return;
+    }
+    
+    showLoading('취소 중...');
+    
+    try {
+        const response = await fetch('{{ url_for("couple.cancel_invite") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('pending-invite').style.display = 'none';
+            showToast(result.message, 'success');
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('취소 중 오류가 발생했습니다.', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function copyInviteCode() {
+    const code = document.getElementById('generated-code').textContent;
+    copyToClipboard(code);
+}
+
+function copyPendingCode() {
+    const code = document.getElementById('pending-code').textContent;
+    copyToClipboard(code);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('초대 코드가 복사되었습니다!', 'success');
+    }).catch(() => {
+        showToast('복사에 실패했습니다.', 'error');
+    });
+}
+
+function shareInviteCode() {
+    const code = document.getElementById('generated-code').textContent;
+    shareCode(code);
+}
+
+function sharePendingCode() {
+    const code = document.getElementById('pending-code').textContent;
+    shareCode(code);
+}
+
+function shareCode(code) {
+    if (navigator.share) {
+        navigator.share({
+            title: '커플 앱 초대 코드',
+            text: `커플 앱에서 함께해요! 초대 코드: ${code}`,
+            url: window.location.origin
+        });
+    } else {
+        // Web Share API를 지원하지 않는 경우 클립보드에 복사
+        const shareText = `커플 앱에서 함께해요! 초대 코드: ${code}\n${window.location.origin}`;
+        navigator.clipboard.writeText(shareText).then(() => {
+            showToast('공유 텍스트가 복사되었습니다!', 'success');
+        });
+    }
+}
+
+function showLoading(text) {
+    document.getElementById('loading-text').textContent = text;
+    document.getElementById('loading-modal').style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loading-modal').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,725 @@
+{% extends "base.html" %}
+
+{% block title %}캘린더 - 커플 앱{% endblock %}
+
+{% block content %}
+<div class="calendar-container">
+    <div class="calendar-header">
+        <h1>📅 캘린더</h1>
+        <p>함께하는 소중한 일정들을 관리해보세요</p>
+        <div class="calendar-actions">
+            <a href="{{ url_for('calendar.create') }}" class="btn btn-primary">새 일정 등록</a>
+        </div>
+    </div>
+
+    <div class="calendar-content">
+        <!-- 캘린더 네비게이션 -->
+        <div class="calendar-nav">
+            <button class="btn-nav" onclick="changeMonth(-1)">‹</button>
+            <h2 class="calendar-title" id="calendar-title">{{ year }}년 {{ month }}월</h2>
+            <button class="btn-nav" onclick="changeMonth(1)">›</button>
+        </div>
+
+        <!-- 캘린더 그리드 -->
+        <div class="calendar-grid">
+            <div class="calendar-weekdays">
+                <div class="weekday">일</div>
+                <div class="weekday">월</div>
+                <div class="weekday">화</div>
+                <div class="weekday">수</div>
+                <div class="weekday">목</div>
+                <div class="weekday">금</div>
+                <div class="weekday">토</div>
+            </div>
+            <div class="calendar-days" id="calendar-days">
+                <!-- 날짜들이 JavaScript로 동적 생성됩니다 -->
+            </div>
+        </div>
+
+        <!-- 선택된 날짜의 일정 목록 -->
+        <div class="selected-date-events">
+            <h3 id="selected-date-title">일정을 보려면 날짜를 클릭하세요</h3>
+            <div id="selected-date-events-list" class="events-list">
+                <!-- 선택된 날짜의 일정들이 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 일정 상세 모달 -->
+<div id="eventModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="event-modal-title">일정 상세</h3>
+            <button class="modal-close" onclick="closeEventModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="event-modal-body">
+            <!-- 일정 상세 내용이 표시됩니다 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEventModal()">닫기</button>
+            <button class="btn btn-primary" id="edit-event-btn" onclick="editEvent()">수정</button>
+            <button class="btn btn-danger" id="delete-event-btn" onclick="deleteEvent()">삭제</button>
+        </div>
+    </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>일정 삭제</h3>
+            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>정말로 이 일정을 삭제하시겠습니까?</p>
+            <p><small>삭제된 일정은 복구할 수 없습니다.</small></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">취소</button>
+            <button class="btn btn-danger" onclick="confirmDelete()">삭제</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 캘린더 페이지 스타일 */
+.calendar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.calendar-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.calendar-header h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+.calendar-header p {
+    font-size: var(--text-lg);
+    color: var(--dark-gray);
+    margin-bottom: var(--spacing-xl);
+}
+
+.calendar-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.calendar-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-2xl);
+    align-items: start;
+}
+
+/* 캘린더 네비게이션 */
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-nav {
+    background: var(--accent-coral);
+    color: var(--white);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: var(--text-lg);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-nav:hover {
+    background: #ff9f8f;
+    transform: scale(1.1);
+}
+
+.calendar-title {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin: 0;
+}
+
+/* 캘린더 그리드 */
+.calendar-grid {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: var(--light-gray);
+}
+
+.weekday {
+    padding: var(--spacing-md);
+    text-align: center;
+    font-weight: 600;
+    color: var(--charcoal);
+    border-right: 1px solid var(--medium-gray);
+}
+
+.weekday:last-child {
+    border-right: none;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-day {
+    min-height: 100px;
+    padding: var(--spacing-sm);
+    border-right: 1px solid var(--medium-gray);
+    border-bottom: 1px solid var(--medium-gray);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    position: relative;
+}
+
+.calendar-day:hover {
+    background: var(--light-gray);
+}
+
+.calendar-day.selected {
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+}
+
+.calendar-day.other-month {
+    color: var(--medium-gray);
+    background: var(--light-gray);
+}
+
+.calendar-day.today {
+    background: rgba(255, 181, 167, 0.3);
+    font-weight: bold;
+}
+
+.calendar-day.today.selected {
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+}
+
+.day-number {
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+}
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.day-event {
+    font-size: var(--text-xs);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-coral);
+    color: var(--white);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.day-event.user1 {
+    background: var(--primary-pink);
+    color: var(--charcoal);
+}
+
+.day-event.user2 {
+    background: var(--primary-blue);
+    color: var(--charcoal);
+}
+
+.day-event.both {
+    background: var(--accent-coral);
+    color: var(--white);
+}
+
+/* 선택된 날짜 일정 */
+.selected-date-events {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-xl);
+    position: sticky;
+    top: calc(64px + var(--spacing-lg));
+}
+
+.selected-date-events h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+}
+
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.event-item {
+    padding: var(--spacing-md);
+    background: var(--light-gray);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--accent-coral);
+}
+
+.event-item:hover {
+    background: var(--medium-gray);
+    transform: translateX(4px);
+}
+
+.event-item.user1 {
+    border-left-color: var(--primary-pink);
+}
+
+.event-item.user2 {
+    border-left-color: var(--primary-blue);
+}
+
+.event-item.both {
+    border-left-color: var(--accent-coral);
+}
+
+.event-time {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-xs);
+}
+
+.event-title {
+    font-weight: 500;
+    color: var(--charcoal);
+    margin-bottom: var(--spacing-xs);
+}
+
+.event-participant {
+    font-size: var(--text-xs);
+    color: var(--dark-gray);
+}
+
+.empty-events {
+    text-align: center;
+    color: var(--dark-gray);
+    font-style: italic;
+    padding: var(--spacing-lg);
+}
+
+/* 모달 스타일 */
+.event-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.event-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.event-detail-item:last-child {
+    border-bottom: none;
+}
+
+.event-detail-label {
+    font-weight: 600;
+    color: var(--charcoal);
+}
+
+.event-detail-value {
+    color: var(--dark-gray);
+    text-align: right;
+}
+
+.event-description {
+    background: var(--light-gray);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    color: var(--charcoal);
+    line-height: 1.6;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .calendar-container {
+        padding: 0 var(--spacing-md);
+    }
+    
+    .calendar-header h1 {
+        font-size: var(--text-2xl);
+    }
+    
+    .calendar-header p {
+        font-size: var(--text-base);
+    }
+    
+    .calendar-content {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xl);
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+        padding: var(--spacing-xs);
+    }
+    
+    .day-events {
+        display: none; /* 모바일에서는 캘린더 셀의 이벤트 숨김 */
+    }
+    
+    .selected-date-events {
+        position: static;
+        order: -1;
+    }
+    
+    .calendar-nav {
+        padding: var(--spacing-md);
+    }
+    
+    .calendar-title {
+        font-size: var(--text-lg);
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-day {
+        min-height: 60px;
+        font-size: var(--text-sm);
+    }
+    
+    .weekday {
+        padding: var(--spacing-sm);
+        font-size: var(--text-sm);
+    }
+    
+    .btn-nav {
+        width: 32px;
+        height: 32px;
+        font-size: var(--text-base);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentYear = {{ year }};
+let currentMonth = {{ month }};
+let selectedDate = null;
+let currentEvents = [];
+let selectedEventId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadCalendar();
+});
+
+async function loadCalendar() {
+    try {
+        // 캘린더 제목 업데이트
+        document.getElementById('calendar-title').textContent = `${currentYear}년 ${currentMonth}월`;
+        
+        // 이벤트 데이터 로드
+        const response = await fetch(`/calendar/api/events?year=${currentYear}&month=${currentMonth}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentEvents = data.events;
+            renderCalendar();
+        } else {
+            console.error('이벤트 로드 실패:', data.message);
+        }
+        
+    } catch (error) {
+        console.error('캘린더 로드 실패:', error);
+    }
+}
+
+function renderCalendar() {
+    const calendarDays = document.getElementById('calendar-days');
+    calendarDays.innerHTML = '';
+    
+    // 해당 월의 첫째 날과 마지막 날
+    const firstDay = new Date(currentYear, currentMonth - 1, 1);
+    const lastDay = new Date(currentYear, currentMonth, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+    
+    // 이전 달의 마지막 날들
+    const prevMonth = new Date(currentYear, currentMonth - 2, 0);
+    const prevMonthDays = prevMonth.getDate();
+    
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        const dayElement = createDayElement(prevMonthDays - i, true);
+        calendarDays.appendChild(dayElement);
+    }
+    
+    // 현재 달의 날들
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayElement = createDayElement(day, false);
+        calendarDays.appendChild(dayElement);
+    }
+    
+    // 다음 달의 첫 날들 (6주 완성을 위해)
+    const totalCells = calendarDays.children.length;
+    const remainingCells = 42 - totalCells; // 6주 * 7일
+    
+    for (let day = 1; day <= remainingCells; day++) {
+        const dayElement = createDayElement(day, true);
+        calendarDays.appendChild(dayElement);
+    }
+}
+
+function createDayElement(day, isOtherMonth) {
+    const dayElement = document.createElement('div');
+    dayElement.className = 'calendar-day';
+    
+    if (isOtherMonth) {
+        dayElement.classList.add('other-month');
+    }
+    
+    // 오늘 날짜 체크
+    const today = new Date();
+    if (!isOtherMonth && 
+        currentYear === today.getFullYear() && 
+        currentMonth === today.getMonth() + 1 && 
+        day === today.getDate()) {
+        dayElement.classList.add('today');
+    }
+    
+    const dayNumber = document.createElement('div');
+    dayNumber.className = 'day-number';
+    dayNumber.textContent = day;
+    dayElement.appendChild(dayNumber);
+    
+    // 해당 날짜의 이벤트 표시
+    if (!isOtherMonth) {
+        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayEvents = currentEvents.filter(event => event.start_date === dateStr);
+        
+        if (dayEvents.length > 0) {
+            const eventsContainer = document.createElement('div');
+            eventsContainer.className = 'day-events';
+            
+            dayEvents.slice(0, 3).forEach(event => { // 최대 3개만 표시
+                const eventElement = document.createElement('div');
+                eventElement.className = `day-event ${event.participant_type}`;
+                eventElement.textContent = event.title;
+                eventElement.onclick = (e) => {
+                    e.stopPropagation();
+                    showEventModal(event);
+                };
+                eventsContainer.appendChild(eventElement);
+            });
+            
+            if (dayEvents.length > 3) {
+                const moreElement = document.createElement('div');
+                moreElement.className = 'day-event';
+                moreElement.textContent = `+${dayEvents.length - 3}개 더`;
+                eventsContainer.appendChild(moreElement);
+            }
+            
+            dayElement.appendChild(eventsContainer);
+        }
+        
+        // 날짜 클릭 이벤트
+        dayElement.onclick = () => selectDate(currentYear, currentMonth, day);
+    }
+    
+    return dayElement;
+}
+
+function selectDate(year, month, day) {
+    // 이전 선택 해제
+    document.querySelectorAll('.calendar-day.selected').forEach(el => {
+        el.classList.remove('selected');
+    });
+    
+    // 새로운 날짜 선택
+    event.currentTarget.classList.add('selected');
+    
+    selectedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    // 선택된 날짜의 이벤트 표시
+    showSelectedDateEvents(selectedDate);
+}
+
+async function showSelectedDateEvents(dateStr) {
+    const title = document.getElementById('selected-date-title');
+    const eventsList = document.getElementById('selected-date-events-list');
+    
+    const date = new Date(dateStr);
+    const formattedDate = date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+    
+    title.textContent = formattedDate;
+    
+    try {
+        const response = await fetch(`/calendar/api/events/${dateStr}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.events.length === 0) {
+                eventsList.innerHTML = '<div class="empty-events">이 날에는 일정이 없습니다.</div>';
+            } else {
+                eventsList.innerHTML = data.events.map(event => `
+                    <div class="event-item ${event.participant_type}" onclick="showEventModal(${JSON.stringify(event).replace(/"/g, '&quot;')})">
+                        <div class="event-time">${event.start_time} - ${event.end_time}</div>
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-participant">${event.participant_text}</div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+    } catch (error) {
+        console.error('이벤트 로드 실패:', error);
+        eventsList.innerHTML = '<div class="empty-events">이벤트를 불러올 수 없습니다.</div>';
+    }
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    
+    if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+    } else if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear--;
+    }
+    
+    loadCalendar();
+}
+
+function showEventModal(event) {
+    selectedEventId = event.id;
+    
+    document.getElementById('event-modal-title').textContent = event.title;
+    
+    const modalBody = document.getElementById('event-modal-body');
+    modalBody.innerHTML = `
+        <div class="event-details">
+            <div class="event-detail-item">
+                <span class="event-detail-label">날짜</span>
+                <span class="event-detail-value">${event.start_date}</span>
+            </div>
+            <div class="event-detail-item">
+                <span class="event-detail-label">시간</span>
+                <span class="event-detail-value">${event.start_time} - ${event.end_time}</span>
+            </div>
+            <div class="event-detail-item">
+                <span class="event-detail-label">참여자</span>
+                <span class="event-detail-value">${event.participant_text}</span>
+            </div>
+            ${event.description ? `
+                <div class="event-detail-item">
+                    <span class="event-detail-label">설명</span>
+                </div>
+                <div class="event-description">${event.description}</div>
+            ` : ''}
+        </div>
+    `;
+    
+    document.getElementById('eventModal').style.display = 'flex';
+}
+
+function closeEventModal() {
+    selectedEventId = null;
+    document.getElementById('eventModal').style.display = 'none';
+}
+
+function editEvent() {
+    if (selectedEventId) {
+        window.location.href = `/calendar/${selectedEventId}/edit`;
+    }
+}
+
+function deleteEvent() {
+    if (selectedEventId) {
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+
+async function confirmDelete() {
+    if (!selectedEventId) return;
+    
+    try {
+        const response = await fetch(`/calendar/${selectedEventId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            closeDeleteModal();
+            closeEventModal();
+            loadCalendar();
+            
+            // 선택된 날짜가 있으면 해당 날짜 이벤트 새로고침
+            if (selectedDate) {
+                showSelectedDateEvents(selectedDate);
+            }
+        } else {
+            showToast(data.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('일정 삭제 실패:', error);
+        showToast('일정 삭제 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEventModal();
+        closeDeleteModal();
+    }
+});
+</script>
+{% endblock %}

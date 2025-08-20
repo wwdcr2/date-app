@@ -1,0 +1,119 @@
+# Nginx 설정 예시 (프로덕션 환경용)
+# /etc/nginx/sites-available/couple_app
+
+server {
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+    
+    # HTTPS로 리다이렉트
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com www.your-domain.com;
+    
+    # SSL 인증서 설정 (Let's Encrypt 예시)
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    
+    # SSL 보안 설정
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # 보안 헤더
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    
+    # 파일 업로드 크기 제한
+    client_max_body_size 5M;
+    
+    # 정적 파일 서빙
+    location /static/ {
+        alias /path/to/your/app/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        
+        # Gzip 압축
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types
+            text/plain
+            text/css
+            text/xml
+            text/javascript
+            application/javascript
+            application/xml+rss
+            application/json
+            image/svg+xml;
+        
+        # 사전 압축된 파일 사용
+        gzip_static on;
+    }
+    
+    # 업로드된 파일 서빙
+    location /uploads/ {
+        alias /path/to/your/app/uploads/;
+        expires 30d;
+        add_header Cache-Control "public";
+        
+        # 이미지 최적화 (선택사항)
+        location ~* \.(jpg|jpeg|png|gif)$ {
+            # WebP 지원 브라우저에 WebP 제공
+            location ~* \.(jpg|jpeg|png)$ {
+                add_header Vary Accept;
+                try_files $uri$webp_suffix $uri =404;
+            }
+        }
+    }
+    
+    # 애플리케이션 프록시
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # SocketIO 지원
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        
+        # 타임아웃 설정
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # SocketIO 전용 경로
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+    }
+    
+    # 로그 설정
+    access_log /var/log/nginx/couple_app_access.log;
+    error_log /var/log/nginx/couple_app_error.log;
+}
+
+# WebP 지원을 위한 맵 설정
+map $http_accept $webp_suffix {
+    default "";
+    "~*webp" ".webp";
+}
